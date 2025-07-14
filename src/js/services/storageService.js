@@ -58,6 +58,7 @@ class StorageService {
         return {
             deck: [],
             hand: [],
+            discard: [], // Ajout de la défausse
             lastDrawTime: null,
             playerName: 'Dresseur',
             totalCardsDrawn: 0,
@@ -71,7 +72,7 @@ class StorageService {
 
     // Valider la structure des données
     validateGameData(data) {
-        const requiredFields = ['deck', 'hand', 'lastDrawTime'];
+        const requiredFields = ['deck', 'hand', 'lastDrawTime', 'discard'];
         
         for (const field of requiredFields) {
             if (!(field in data)) {
@@ -80,9 +81,9 @@ class StorageService {
             }
         }
 
-        // Vérifier que deck et hand sont des tableaux
-        if (!Array.isArray(data.deck) || !Array.isArray(data.hand)) {
-            console.error('Les champs deck et hand doivent être des tableaux');
+        // Vérifier que deck, hand et discard sont des tableaux
+        if (!Array.isArray(data.deck) || !Array.isArray(data.hand) || !Array.isArray(data.discard)) {
+            console.error('Les champs deck, hand et discard doivent être des tableaux');
             return false;
         }
 
