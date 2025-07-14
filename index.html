@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon TCG - Interface d'échange et de tirage</title>
+    <link rel="stylesheet" href="src/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Pokémon TCG</h1>
+        <div class="player-info">
+            <span>Joueur: <span id="player-name">Dresseur</span></span>
+            <span>Cartes en main: <span id="hand-count">0</span></span>
+            <span>Cartes en pioche: <span id="deck-count">0</span></span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Zone de tirage -->
+        <section class="draw-section">
+            <button id="draw-button" class="draw-button">Tirer 5 cartes</button>
+            <div id="draw-timer" class="draw-timer">Prochain tirage dans: <span id="timer-display">5:00</span></div>
+            <button id="start-battle-btn" class="battle-button">Lancer un combat</button>
+        </section>
+
+        <!-- Zone de jeu -->
+        <section class="game-area">
+            <!-- Zone pioche -->
+            <div class="deck-zone">
+                <h3>Pioche</h3>
+                <div id="deck-container" class="cards-container"></div>
+            </div>
+
+            <!-- Zone main -->
+            <div class="hand-zone">
+                <h3>Main</h3>
+                <div id="hand-container" class="cards-container"></div>
+            </div>
+        </section>
+
+        <!-- Section de combat (cachée par défaut) -->
+        <section id="battle-section" class="battle-section" style="display: none;">
+            <h2>Combat Pokémon</h2>
+            <!-- Encart de scores -->
+            <div id="battle-scores" class="battle-scores">
+                <span>Victoires joueur : <span id="score-player">0</span></span>
+                <span>Victoires IA : <span id="score-ia">0</span></span>
+                <span>Égalités : <span id="score-draw">0</span></span>
+            </div>
+            <div class="battle-areas">
+                <!-- Zones du joueur -->
+                <div class="battle-player-zones">
+                    <div class="battle-zone-title">Pioche</div>
+                    <div id="battle-deck-container" class="cards-container battle-cards"></div>
+                    <div class="battle-zone-title">Main</div>
+                    <div id="battle-hand-container" class="cards-container battle-cards"></div>
+                    <div class="battle-zone-title">Zone de combat</div>
+                    <div id="battle-player-combat" class="cards-container battle-combat-zone"></div>
+                </div>
+                <!-- VS et adversaire -->
+                <div class="battle-vs-area">
+                    <div class="battle-vs">VS</div>
+                    <div class="battle-zone-title">Main adverse</div>
+                    <div id="battle-opponent-hand-container" class="cards-container battle-cards"></div>
+                    <div class="battle-zone-title">Zone de combat adverse</div>
+                    <div id="battle-opponent-combat" class="cards-container battle-combat-zone"></div>
+                </div>
+            </div>
+            <div id="battle-controls" class="battle-controls"></div>
+            <!-- Zone de commentaires post-combat -->
+            <div id="battle-comments-section" class="battle-comments-section" style="display: none;">
+                <h3>Laissez un commentaire sur ce combat</h3>
+                <form id="battle-comment-form">
+                    <input type="text" id="battle-comment-input" maxlength="120" placeholder="Votre commentaire..." required />
+                    <button type="submit">Envoyer</button>
+                </form>
+                <div id="battle-comments-list"></div>
+            </div>
+        </section>
+
+        <!-- Modal pour les détails de carte -->
+        <div id="card-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <div id="card-details"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="src/js/app.js" type="module"></script>
+</body>
+</html> 
