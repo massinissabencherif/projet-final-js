@@ -9,6 +9,10 @@ import { battleService } from './services/battleService.js';
 import { commentService } from './services/commentService.js';
 import { notificationService } from './services/notificationService.js';
 
+// Exposer les contrôleurs globalement pour l'accès cross-controller
+window.gameController = gameController;
+window.battleController = battleController;
+
 console.log('Application Pokémon TCG initialisée');
 
 // Initialisation de l'application
