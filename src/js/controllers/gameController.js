@@ -12,13 +12,45 @@ class GameController {
     }
 
     // Initialiser le contrôleur de jeu
-    init() {
+    async init() {
         if (this.isInitialized) return;
-        
         this.setupEventListeners();
         this.startDrawTimer();
         this.isInitialized = true;
         console.log('Contrôleur de jeu initialisé');
+
+        // Désactiver le bouton de tirage tant que les cartes ne sont pas prêtes
+        const drawButton = document.getElementById('draw-button');
+        if (drawButton) {
+            if (!apiService.areCardsCached()) {
+                drawButton.disabled = true;
+                drawButton.textContent = 'Chargement des cartes...';
+                drawButton.classList.add('loading');
+            } else {
+                drawButton.disabled = false;
+                drawButton.textContent = 'Tirer 5 cartes';
+                drawButton.classList.remove('loading');
+            }
+        }
+
+        // Précharger les cartes si besoin, sans bloquer l'UI
+        if (!apiService.areCardsCached()) {
+            try {
+                await apiService.getRandomCards(1); // Déclenche le cache
+                if (drawButton) {
+                    drawButton.disabled = false;
+                    drawButton.textContent = 'Tirer 5 cartes';
+                    drawButton.classList.remove('loading');
+                }
+            } catch (e) {
+                if (drawButton) {
+                    drawButton.disabled = false;
+                    drawButton.textContent = 'Mode hors ligne';
+                    drawButton.classList.remove('loading');
+                }
+                notificationService.warning('⚠️ Impossible de charger les cartes depuis l\'API. Mode hors ligne activé.');
+            }
+        }
     }
 
     // Configurer les écouteurs d'événements
@@ -76,6 +108,12 @@ class GameController {
             
             // Mettre à jour l'interface
             this.updateUI();
+
+            // Si on est sur la page combat, rafraîchir l'affichage combat
+            const battleSection = document.getElementById('battle-section');
+            if (battleSection && battleSection.style.display !== 'none' && window.battleController) {
+                window.battleController.displayBattleCards();
+            }
             
             // Réactiver le bouton
             drawButton.classList.remove('loading');
