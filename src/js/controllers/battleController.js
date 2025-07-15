@@ -66,16 +66,24 @@ class BattleController {
         battleSection.style.display = 'flex';
         
         // Initialiser le combat
-        this.initBattle();
-        
-        notificationService.info('Mode combat activé ! Placez une carte dans votre zone de combat.');
+        this.initBattle().then(() => {
+            notificationService.info('Mode combat activé ! Placez une carte dans votre zone de combat.');
+        }).catch(error => {
+            console.error('Erreur lors de l\'initialisation du combat:', error);
+            notificationService.error('Erreur lors de l\'initialisation du combat');
+        });
     }
 
     // Initialiser le combat
-    initBattle() {
+    async initBattle() {
+        // Initialiser le deck de l'IA si nécessaire
+        if (battleService.getOpponentDeck().length === 0) {
+            console.log('Initialisation du deck de l\'IA...');
+            await battleService.initOpponentDeck();
+        }
+        
         // Initialiser la main de l'IA
-        const deck = gameStateService.getDeck();
-        battleService.initOpponentHand(deck);
+        battleService.initOpponentHand();
         
         // Afficher les cartes
         this.displayBattleCards();
@@ -254,14 +262,20 @@ class BattleController {
     }
 
     // Gérer le clic sur une carte de la main
-    handleHandCardClick(card) {
+    async handleHandCardClick(card) {
         const hand = gameStateService.getHand();
         
         // Déplacer la carte vers la zone de combat
-        if (battleService.moveCardToBattleZone(card.id, hand)) {
-            gameStateService.setHand(hand);
-            this.displayBattleCards();
-            notificationService.success(`${card.name} placé en zone de combat`);
+        try {
+            const success = await battleService.moveCardToBattleZone(card.id, hand);
+            if (success) {
+                gameStateService.setHand(hand);
+                this.displayBattleCards();
+                notificationService.success(`${card.name} placé en zone de combat`);
+            }
+        } catch (error) {
+            console.error('Erreur lors du placement en zone de combat:', error);
+            notificationService.error('Erreur lors du placement en zone de combat');
         }
     }
 
@@ -513,22 +527,19 @@ class BattleController {
         gameStateService.setHand(hand);
         this.displayBattleCards();
     }
-    moveCardFromHandToBattleCombat(cardId) {
+    async moveCardFromHandToBattleCombat(cardId) {
         const hand = gameStateService.getHand();
-        // Si une carte est déjà présente, la remettre dans la main
-        if (battleService.getBattlePlayerCard()) {
-            hand.push(battleService.getBattlePlayerCard());
+        try {
+            // Utiliser la méthode du service qui gère maintenant l'IA séparément
+            const success = await battleService.moveCardToBattleZone(cardId, hand);
+            if (success) {
+                gameStateService.setHand(hand);
+                this.displayBattleCards();
+            }
+        } catch (error) {
+            console.error('Erreur lors du déplacement vers la zone de combat:', error);
+            notificationService.error('Erreur lors du déplacement vers la zone de combat');
         }
-        const cardIdx = hand.findIndex(c => c.id === cardId);
-        if (cardIdx === -1) return;
-        battleService.setBattlePlayerCard(hand.splice(cardIdx, 1)[0]);
-        gameStateService.setHand(hand);
-        // S'assurer que la main de l'IA existe et choisir une carte
-        if (!battleService.getOpponentHand() || battleService.getOpponentHand().length === 0) {
-            battleService.initOpponentHand(gameStateService.getDeck());
-        }
-        battleService.opponentChooseBattleCard();
-        this.displayBattleCards();
     }
     moveCardFromBattleCombatToHand() {
         const hand = gameStateService.getHand();

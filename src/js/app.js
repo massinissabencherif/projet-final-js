@@ -81,7 +81,9 @@ function restoreBattleState() {
             battleSection.style.display = 'flex';
             
             // Réinitialiser l'affichage du combat
-            battleController.initBattle();
+            battleController.initBattle().catch(error => {
+                console.error('Erreur lors de la restauration du combat:', error);
+            });
         }
     } else {
         // Afficher la zone de jeu normale
