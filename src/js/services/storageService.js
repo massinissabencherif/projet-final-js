@@ -172,6 +172,32 @@ class StorageService {
         }
     }
 
+    // Supprimer une partie spécifique des données
+    removePartialData(key) {
+        try {
+            console.log(`=== SUPPRESSION PARTIELLE: ${key} ===`);
+            const currentData = this.loadGameData();
+            console.log('Données actuelles:', currentData);
+            
+            if (key in currentData) {
+                delete currentData[key];
+                currentData.lastSaveTime = Date.now();
+                
+                const success = this.saveGameData(currentData);
+                console.log(`Données partielles supprimées: ${key}`, success);
+                console.log(`=== FIN SUPPRESSION PARTIELLE: ${key} ===`);
+                return success;
+            } else {
+                console.log(`Clé ${key} non trouvée dans les données`);
+                console.log(`=== FIN SUPPRESSION PARTIELLE: ${key} ===`);
+                return true; // Considéré comme un succès si la clé n'existe pas
+            }
+        } catch (error) {
+            console.error(`Erreur lors de la suppression partielle de ${key}:`, error);
+            return false;
+        }
+    }
+
     // Effacer toutes les données
     clearAllData() {
         try {

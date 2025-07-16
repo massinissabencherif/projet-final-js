@@ -57,10 +57,20 @@ class BattleController {
         const battleSection = document.getElementById('battle-section');
         const gameArea = document.querySelector('.game-area');
         
-        // Sauvegarder l'état avant le combat
+        // Vérifier si on a des cartes en main ou en deck
         const deck = gameStateService.getDeck();
         const hand = gameStateService.getHand();
+        
+        if (deck.length === 0 && hand.length === 0) {
+            notificationService.warning('Vous devez d\'abord tirer des cartes avant de lancer un combat !');
+            return;
+        }
+        
+        // Sauvegarder l'état avant le combat
         battleService.savePreBattleState(deck, hand);
+        
+        // Réinitialiser l'état du combat pour un nouveau combat
+        battleService.resetBattleState();
         
         // Afficher la section de combat
         gameArea.style.display = 'none';
@@ -79,13 +89,12 @@ class BattleController {
     async initBattle() {
         console.log('Initialisation du combat...');
         
-        // Initialiser la main de l'IA UNIQUEMENT si aucun état de combat n'a été restauré
-        if (!battleService.battleStateLoaded) {
-            console.log('Premier lancement du combat - initialisation de la main de l\'IA...');
-            await battleService.initOpponentHand(); // 5 cartes directes dans la main, deck vide
-        } else {
-            console.log('État de combat restauré - pas d\'initialisation de la main IA');
-        }
+        // Marquer que nous sommes en mode combat
+        battleService.inBattle = true;
+        
+        // Initialiser la main de l'IA pour un nouveau combat
+        console.log('Initialisation de la main de l\'IA pour le nouveau combat...');
+        await battleService.initOpponentHand(); // 5 cartes directes dans la main, deck vide
         
         // S'assurer que l'état de combat est sauvegardé
         battleService.saveBattleState();
@@ -93,7 +102,7 @@ class BattleController {
         // Afficher les cartes
         this.displayBattleCards();
         
-        // Mettre à jour les scores
+        // Mettre à jour les scores (ils devraient être à 0 pour un nouveau combat)
         this.updateBattleScores();
         
         // Afficher la section de commentaires
@@ -436,13 +445,94 @@ class BattleController {
 
     // Sortir du mode combat
     exitBattle() {
-        const restoredState = battleService.restorePreBattleState();
-        if (restoredState.deck && restoredState.hand) {
-            gameStateService.setDeck(restoredState.deck);
-            gameStateService.setHand(restoredState.hand);
+        // Calculer le résultat du combat basé sur les scores actuels
+        const stats = gameStateService.getGameStats();
+        const playerWins = stats.wins;
+        const iaWins = stats.losses;
+        const draws = stats.draws;
+        
+        // Déterminer le gagnant du combat
+        let result, message;
+        if (playerWins > iaWins) {
+            result = 'victoire';
+            message = 'Victoire du joueur ! Le joueur a gagné ce combat !';
+        } else if (iaWins > playerWins) {
+            result = 'défaite';
+            message = 'Victoire de l\'IA ! L\'IA a gagné ce combat !';
+        } else {
+            result = 'égalité';
+            message = 'Égalité ! Aucun gagnant dans ce combat !';
         }
         
+        // Afficher la modal de résultat
+        this.showBattleResultModal(result, message, stats);
+    }
+
+    // Afficher la modal de résultat de combat
+    showBattleResultModal(result, message, stats) {
+        const modal = document.getElementById('battle-result-modal');
+        const details = document.getElementById('battle-result-details');
+        const closeBtn = document.getElementById('close-battle-result-btn');
+        
+        if (!modal || !details) {
+            console.error('Modal de résultat de combat non trouvée');
+            return;
+        }
+        
+        // Créer le contenu de la modal
+        details.innerHTML = `
+            <h2>Fin du Combat</h2>
+            <div class="result-message result-${result}">${message}</div>
+            <div class="battle-stats">
+                <h3>Statistiques du combat</h3>
+                <p>Victoires joueur : ${stats.wins}</p>
+                <p>Victoires IA : ${stats.losses}</p>
+                <p>Égalités : ${stats.draws}</p>
+                <p>Total des combats : ${stats.gamesPlayed}</p>
+            </div>
+        `;
+        
+        // Afficher la modal
+        modal.style.display = 'block';
+        
+        // Configurer le bouton de fermeture
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                modal.style.display = 'none';
+                this.finishBattleAndReset();
+            };
+        }
+        
+        // Fermer la modal en cliquant à l'extérieur
+        modal.onclick = (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+                this.finishBattleAndReset();
+            }
+        };
+    }
+
+    // Terminer le combat et réinitialiser
+    finishBattleAndReset() {
+        // Vider le deck et la main du joueur
+        gameStateService.resetDeckAndHand();
+        
+        // Réinitialiser les scores de combat
+        gameStateService.resetStats();
+        
+        // Réinitialiser l'état du combat
+        battleService.resetBattleState();
+        
+        // Masquer la section de combat
         this.hideBattleSection();
+        
+        // Mettre à jour l'interface
+        if (window.gameController && typeof window.gameController.updateUI === 'function') {
+            window.gameController.updateUI();
+        }
+        
+        // Notification de confirmation
+        notificationService.success('Combat terminé ! Vous pouvez maintenant lancer un nouveau combat.');
     }
 
     // Masquer la section de combat
