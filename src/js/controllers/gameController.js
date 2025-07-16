@@ -19,37 +19,33 @@ class GameController {
         this.isInitialized = true;
         console.log('Contrôleur de jeu initialisé');
 
-        // Désactiver le bouton de tirage tant que les cartes ne sont pas prêtes
+        // Forcer l'utilisation du mode local
+        apiService.setLocalMode(true);
+        
+        // Désactiver le bouton de tirage pendant le chargement initial
         const drawButton = document.getElementById('draw-button');
         if (drawButton) {
-            if (!apiService.areCardsCached()) {
-                drawButton.disabled = true;
-                drawButton.textContent = 'Chargement des cartes...';
-                drawButton.classList.add('loading');
-            } else {
+            drawButton.disabled = true;
+            drawButton.textContent = 'Chargement des cartes locales...';
+            drawButton.classList.add('loading');
+        }
+
+        // Précharger les cartes locales
+        try {
+            await apiService.loadLocalCards();
+            if (drawButton) {
                 drawButton.disabled = false;
                 drawButton.textContent = 'Tirer 5 cartes';
                 drawButton.classList.remove('loading');
             }
-        }
-
-        // Précharger les cartes si besoin, sans bloquer l'UI
-        if (!apiService.areCardsCached()) {
-            try {
-                await apiService.getRandomCards(1); // Déclenche le cache
-                if (drawButton) {
-                    drawButton.disabled = false;
-                    drawButton.textContent = 'Tirer 5 cartes';
-                    drawButton.classList.remove('loading');
-                }
-            } catch (e) {
-                if (drawButton) {
-                    drawButton.disabled = false;
-                    drawButton.textContent = 'Mode hors ligne';
-                    drawButton.classList.remove('loading');
-                }
-                notificationService.warning('⚠️ Impossible de charger les cartes depuis l\'API. Mode hors ligne activé.');
+            console.log('✅ Cartes locales chargées avec succès');
+        } catch (e) {
+            if (drawButton) {
+                drawButton.disabled = false;
+                drawButton.textContent = 'Mode hors ligne';
+                drawButton.classList.remove('loading');
             }
+            notificationService.warning('⚠️ Impossible de charger les cartes locales. Mode hors ligne activé.');
         }
     }
 
@@ -103,6 +99,37 @@ class GameController {
             
             // Ajouter les cartes à la pioche
             gameStateService.addCardsToDeck(newCards);
+
+            // Ajouter exactement 5 cartes au deck de l'IA (remplace le deck)
+            console.log('🔄 Tentative d\'ajout de cartes au deck de l\'IA...');
+            console.log('window.battleService disponible:', !!window.battleService);
+            console.log('battleService disponible:', typeof battleService);
+            
+            if (window.battleService && typeof window.battleService.setOpponentDeck === 'function') {
+                console.log('✅ Utilisation de window.battleService.setOpponentDeck');
+                await window.battleService.setOpponentDeck(5);
+                console.log(`✅ Deck IA après ajout: ${window.battleService.getOpponentDeck().length} cartes`);
+                
+                // Compléter la main de l'IA avec des cartes du deck si nécessaire
+                if (typeof window.battleService.fillOpponentHandFromDeck === 'function') {
+                    console.log('🔄 Complétion de la main IA...');
+                    window.battleService.fillOpponentHandFromDeck();
+                    console.log(`✅ Main IA après complétion: ${window.battleService.getOpponentHand().length} cartes`);
+                }
+            } else if (typeof battleService !== 'undefined' && typeof battleService.setOpponentDeck === 'function') {
+                console.log('✅ Utilisation de battleService.setOpponentDeck');
+                await battleService.setOpponentDeck(5);
+                console.log(`✅ Deck IA après ajout: ${battleService.getOpponentDeck().length} cartes`);
+                
+                // Compléter la main de l'IA avec des cartes du deck si nécessaire
+                if (typeof battleService.fillOpponentHandFromDeck === 'function') {
+                    console.log('🔄 Complétion de la main IA...');
+                    battleService.fillOpponentHandFromDeck();
+                    console.log(`✅ Main IA après complétion: ${battleService.getOpponentHand().length} cartes`);
+                }
+            } else {
+                console.error('❌ battleService non disponible ou méthode setOpponentDeck manquante');
+            }
             
             console.log(`✅ ${newCards.length} cartes ajoutées à la pioche`);
             
@@ -269,17 +296,15 @@ class GameController {
         }
     }
 
-    // Vérifier la connectivité de l'API
+    // Vérifier la connectivité de l'API locale
     async checkApiConnection() {
         try {
-            const isConnected = await apiService.testConnection();
-            if (isConnected) {
-                console.log('✅ Connexion à l\'API Pokémon TCG établie');
-            } else {
-                console.warn('⚠️ Problème de connexion à l\'API, utilisation du mode hors ligne');
-            }
+            // Forcer l'utilisation du mode local
+            apiService.setLocalMode(true);
+            const cards = await apiService.loadLocalCards();
+            console.log(`✅ API locale disponible avec ${cards.length} cartes`);
         } catch (error) {
-            console.error('❌ Erreur lors de la vérification de l\'API:', error);
+            console.error('❌ Erreur lors de la vérification de l\'API locale:', error);
         }
     }
 

@@ -48,27 +48,76 @@
                 <span>Victoires IA : <span id="score-ia">0</span></span>
                 <span>Égalités : <span id="score-draw">0</span></span>
             </div>
-            <div class="battle-areas">
-                <!-- Zones du joueur -->
-                <div class="battle-player-zones">
-                    <div class="battle-zone-title">Pioche</div>
-                    <div id="battle-deck-container" class="cards-container battle-cards"></div>
-                    <div class="battle-zone-title">Main</div>
-                    <div id="battle-hand-container" class="cards-container battle-cards"></div>
-                    <div class="battle-zone-title">Défausse</div>
-                    <div id="battle-discard-container" class="cards-container battle-cards"></div>
-                    <div class="battle-zone-title">Zone de combat</div>
-                    <div id="battle-player-combat" class="cards-container battle-combat-zone"></div>
+            
+            <!-- Arène Pokémon TCG -->
+            <div class="pokemon-arena">
+                <!-- Joueur 1 (Haut) -->
+                <div class="player-zone player-top">
+                    <div class="player-name">Joueur</div>
+                    
+                    <!-- Zone deck/défausse (haut) -->
+                    <div class="deck-discard-zone">
+                        <div class="zone-label">Deck</div>
+                        <div class="deck-slots" id="battle-deck-container"></div>
+                        <div class="zone-label">Défausse</div>
+                        <div class="discard-slots" id="battle-discard-container"></div>
+                    </div>
+                    
+                    <!-- Zone centrale joueur 1 -->
+                    <div class="center-zone">
+                        <!-- Main du joueur -->
+                        <div class="hand-zone-battle">
+                            <div class="zone-label">Main</div>
+                            <div class="hand-slots" id="battle-hand-container"></div>
+                        </div>
+                        
+                        <!-- Pokémon actif -->
+                        <div class="active-pokemon-zone">
+                            <div class="zone-label">Pokémon Actif</div>
+                            <div class="card-slot active-slot" id="battle-player-combat"></div>
+                        </div>
+                    </div>
                 </div>
-                <!-- VS et adversaire -->
-                <div class="battle-vs-area">
-                    <div class="battle-vs">VS</div>
-                    <div class="battle-zone-title">Main adverse</div>
-                    <div id="battle-opponent-hand-container" class="cards-container battle-cards"></div>
-                    <div class="battle-zone-title">Zone de combat adverse</div>
-                    <div id="battle-opponent-combat" class="cards-container battle-combat-zone"></div>
+                
+                <!-- Séparateur central avec Poké Ball -->
+                <div class="arena-separator">
+                    <div class="pokeball-center">
+                        <div class="pokeball-top"></div>
+                        <div class="pokeball-center-line"></div>
+                        <div class="pokeball-bottom"></div>
+                        <div class="pokeball-button"></div>
+                    </div>
+                </div>
+                
+                <!-- Joueur 2 (Bas) - IA -->
+                <div class="player-zone player-bottom">
+                    <div class="player-name">IA</div>
+                    
+                    <!-- Zone centrale joueur 2 -->
+                    <div class="center-zone">
+                        <!-- Pokémon actif -->
+                        <div class="active-pokemon-zone">
+                            <div class="zone-label">Pokémon Actif</div>
+                            <div class="card-slot active-slot" id="battle-opponent-combat"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Zone deck/défausse (bas) -->
+                    <div class="deck-discard-zone">
+                        <div class="zone-label">Deck</div>
+                        <div class="deck-slots" id="battle-opponent-deck-container"></div>
+                        <div class="zone-label">Défausse</div>
+                        <div class="discard-slots" id="battle-opponent-discard-container"></div>
+                    </div>
+                    
+                    <!-- Main de l'IA -->
+                    <div class="hand-zone-battle">
+                        <div class="zone-label">Main</div>
+                        <div class="hand-slots" id="battle-opponent-hand-container"></div>
+                    </div>
                 </div>
             </div>
+            
             <div id="battle-controls" class="battle-controls"></div>
             <!-- Zone de commentaires post-combat -->
             <div id="battle-comments-section" class="battle-comments-section" style="display: none;">

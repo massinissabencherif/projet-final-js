@@ -27,6 +27,9 @@ class CardService {
         cardDiv.dataset.location = location;
         cardDiv.dataset.index = index;
         
+        // Rendre la carte draggable
+        cardDiv.draggable = true;
+        
         // Définir la couleur selon le type
         const typeColor = this.getTypeColor(card.type);
         cardDiv.style.backgroundColor = typeColor;

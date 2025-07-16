@@ -9,9 +9,10 @@ import { battleService } from './services/battleService.js';
 import { commentService } from './services/commentService.js';
 import { notificationService } from './services/notificationService.js';
 
-// Exposer les contrôleurs globalement pour l'accès cross-controller
+// Exposer les contrôleurs et services globalement pour l'accès cross-controller
 window.gameController = gameController;
 window.battleController = battleController;
+window.battleService = battleService;
 
 console.log('Application Pokémon TCG initialisée');
 
@@ -35,23 +36,26 @@ async function initApp() {
     // Mettre à jour l'interface
     gameController.updateUI();
     
-    // Restaurer l'état du combat si nécessaire
-    restoreBattleState();
+    // Restaurer l'état du combat si nécessaire (après l'initialisation des contrôleurs)
+    setTimeout(() => {
+        restoreBattleState();
+    }, 100);
     
     console.log('Application initialisée avec succès');
 }
 
-// Vérifier la connectivité de l'API
+// Vérifier la connectivité de l'API locale
 async function checkApiConnection() {
     try {
-        const isConnected = await apiService.testConnection();
-        if (isConnected) {
-            console.log('✅ Connexion à l\'API Pokémon TCG établie');
-        } else {
-            console.warn('⚠️ Problème de connexion à l\'API, utilisation du mode hors ligne');
-        }
+        // Forcer l'utilisation du mode local
+        apiService.setLocalMode(true);
+        console.log('✅ Mode API locale activé');
+        
+        // Charger les cartes locales pour vérifier qu'elles sont disponibles
+        const cards = await apiService.loadLocalCards();
+        console.log(`✅ ${cards.length} cartes locales chargées avec succès`);
     } catch (error) {
-        console.error('❌ Erreur lors de la vérification de l\'API:', error);
+        console.error('❌ Erreur lors du chargement des cartes locales:', error);
     }
 }
 
@@ -59,7 +63,6 @@ async function checkApiConnection() {
 function loadGameData() {
     try {
         gameStateService.loadGameData();
-        battleService.loadBattleState();
         console.log('✅ Données chargées depuis le LocalStorage');
     } catch (error) {
         console.error('❌ Erreur lors du chargement des données:', error);
@@ -69,24 +72,58 @@ function loadGameData() {
 
 // Restaurer l'état du combat si nécessaire
 function restoreBattleState() {
-    // Toujours recharger l'état du combat depuis le localStorage
-    battleService.loadBattleState();
-    if (battleService.isInBattle()) {
-        // Afficher la section de combat
-        const battleSection = document.getElementById('battle-section');
-        const gameArea = document.querySelector('.game-area');
+    try {
+        console.log('=== RESTAURATION DE L\'ÉTAT DU COMBAT ===');
         
-        if (battleSection && gameArea) {
-            gameArea.style.display = 'none';
-            battleSection.style.display = 'flex';
+        // Charger l'état du combat depuis le localStorage
+        battleService.loadBattleState();
+        const isInBattle = battleService.isInBattle();
+        console.log('État du combat chargé:', isInBattle);
+        console.log('Données de combat:', {
+            opponentHand: battleService.getOpponentHand().length,
+            opponentDeck: battleService.getOpponentDeck().length,
+            opponentDiscard: battleService.getOpponentDiscard().length,
+            battlePlayerCard: battleService.getBattlePlayerCard() ? 'présente' : 'absente',
+            opponentBattleCard: battleService.getOpponentBattleCard() ? 'présente' : 'absente'
+        });
+        
+        if (isInBattle) {
+            console.log('Restauration du mode combat...');
+            // Afficher la section de combat
+            const battleSection = document.getElementById('battle-section');
+            const gameArea = document.querySelector('.game-area');
             
-            // Réinitialiser l'affichage du combat
-            battleController.initBattle().catch(error => {
-                console.error('Erreur lors de la restauration du combat:', error);
-            });
+            if (battleSection && gameArea) {
+                gameArea.style.display = 'none';
+                battleSection.style.display = 'flex';
+                
+                // Réinitialiser l'affichage du combat
+                battleController.initBattle().then(() => {
+                    console.log('Mode combat restauré avec succès');
+                    notificationService.info('Mode combat restauré');
+                }).catch(error => {
+                    console.error('Erreur lors de la restauration du combat:', error);
+                    notificationService.error('Erreur lors de la restauration du combat');
+                });
+            } else {
+                console.error('Éléments DOM manquants pour la restauration du combat');
+            }
+        } else {
+            console.log('Affichage du mode normal...');
+            // Afficher la zone de jeu normale
+            const battleSection = document.getElementById('battle-section');
+            const gameArea = document.querySelector('.game-area');
+            
+            if (battleSection && gameArea) {
+                battleSection.style.display = 'none';
+                gameArea.style.display = 'grid';
+            }
         }
-    } else {
-        // Afficher la zone de jeu normale
+        
+        console.log('=== FIN DE LA RESTAURATION ===');
+    } catch (error) {
+        console.error('Erreur lors de la restauration de l\'état du combat:', error);
+        // En cas d'erreur, afficher le mode normal
         const battleSection = document.getElementById('battle-section');
         const gameArea = document.querySelector('.game-area');
         

@@ -87,6 +87,12 @@ class StorageService {
             return false;
         }
 
+        // Vérifier que battleState est un objet s'il est présent
+        if (data.battleState !== undefined && typeof data.battleState !== 'object') {
+            console.error('Le champ battleState doit être un objet');
+            return false;
+        }
+
         return true;
     }
 
@@ -126,13 +132,21 @@ class StorageService {
     // Sauvegarder une partie spécifique des données
     savePartialData(key, value) {
         try {
+            console.log(`=== SAUVEGARDE PARTIELLE: ${key} ===`);
             const currentData = this.loadGameData();
+            console.log('Données actuelles:', currentData);
             currentData[key] = value;
             currentData.lastSaveTime = Date.now();
             
-            this.saveGameData(currentData);
-            console.log(`Données partielles sauvegardées: ${key}`);
-            return true;
+            const success = this.saveGameData(currentData);
+            console.log(`Données partielles sauvegardées: ${key}`, success);
+            
+            // Vérifier que les données sont bien sauvegardées
+            const savedData = localStorage.getItem(this.storageKey);
+            console.log('Données brutes dans localStorage:', savedData);
+            console.log('Données parsées dans localStorage:', savedData ? JSON.parse(savedData) : 'null');
+            console.log(`=== FIN SAUVEGARDE PARTIELLE: ${key} ===`);
+            return success;
         } catch (error) {
             console.error(`Erreur lors de la sauvegarde partielle de ${key}:`, error);
             return false;
@@ -142,8 +156,16 @@ class StorageService {
     // Charger une partie spécifique des données
     loadPartialData(key, defaultValue = null) {
         try {
+            console.log(`=== CHARGEMENT PARTIEL: ${key} ===`);
             const gameData = this.loadGameData();
-            return gameData[key] !== undefined ? gameData[key] : defaultValue;
+            console.log('Données complètes chargées:', gameData);
+            console.log(`Clés disponibles:`, Object.keys(gameData));
+            console.log(`Recherche de la clé: ${key}`);
+            console.log(`Valeur de ${key}:`, gameData[key]);
+            const result = gameData[key] !== undefined ? gameData[key] : defaultValue;
+            console.log(`Résultat pour ${key}:`, result);
+            console.log(`=== FIN CHARGEMENT PARTIEL: ${key} ===`);
+            return result;
         } catch (error) {
             console.error(`Erreur lors du chargement partiel de ${key}:`, error);
             return defaultValue;
