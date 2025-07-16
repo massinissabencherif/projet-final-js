@@ -178,10 +178,11 @@ class GameStateService {
         this.saveGameData();
     }
 
-    // Réinitialiser le deck et la main
+    // Réinitialiser le deck, la main et la défausse
     resetDeckAndHand() {
         this.state.deck = [];
         this.state.hand = [];
+        this.state.discard = []; // Vider aussi la défausse
         this.state.lastDrawTime = null;
         this.saveGameData();
     }

@@ -426,6 +426,32 @@ class BattleService {
             this.saveBattleState();
         }
     }
+
+    // Réinitialiser complètement l'état du combat
+    resetBattleState() {
+        console.log('🔄 Réinitialisation complète de l\'état du combat...');
+        
+        // Réinitialiser toutes les propriétés du combat
+        this.opponentHand = [];
+        this.opponentDeck = [];
+        this.opponentDiscard = [];
+        this.opponentBattleCard = null;
+        this.battlePlayerCard = null;
+        this.selectedBattleCard = null;
+        this.inBattle = false;
+        this.preBattleDeck = null;
+        this.preBattleHand = null;
+        this.battleStateLoaded = false;
+        
+        // Sauvegarder l'état réinitialisé
+        this.saveBattleState();
+        
+        // Nettoyer les données de combat dans le localStorage
+        storageService.removePartialData('battleState');
+        gameStateService.saveBattleState(null);
+        
+        console.log('✅ État du combat réinitialisé avec succès');
+    }
 }
 
 // Exporter une instance unique du service
