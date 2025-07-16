@@ -1,4 +1,4 @@
-// Service pour interagir avec l'API Pokémon TCG
+// Service pour interagir avec l'API Pokémon TCG (version locale)
 class ApiService {
     constructor() {
         this.baseUrl = 'https://api.pokemontcg.io/v2';
@@ -7,10 +7,64 @@ class ApiService {
             'X-Api-Key': this.apiKey,
             'Content-Type': 'application/json'
         };
+        this.localCards = null; // Cache pour les cartes locales
+        this.useLocalMode = true; // Mode local activé par défaut
     }
 
-    // Récupérer des cartes aléatoires avec cache local
+    // Charger les cartes depuis le fichier local
+    async loadLocalCards() {
+        if (this.localCards) {
+            return this.localCards; // Déjà chargé
+        }
+
+        try {
+            console.log('Chargement des cartes depuis le fichier local...');
+            // Charger le fichier JSON local
+            const response = await fetch('./data.json'); // Utilise directement data.json
+            if (!response.ok) {
+                throw new Error(`Erreur lors du chargement du fichier local: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            this.localCards = data.data || data; // Supporte les deux formats possibles
+            
+            console.log(`✅ ${this.localCards.length} cartes chargées depuis le fichier local`);
+            return this.localCards;
+        } catch (error) {
+            console.warn('⚠️ Impossible de charger le fichier local, utilisation du mode hors ligne:', error);
+            return [];
+        }
+    }
+
+    // Récupérer des cartes aléatoires (version locale)
     async getRandomCards(count = 5) {
+        try {
+            if (this.useLocalMode) {
+                // Mode local : utiliser le fichier JSON
+                const cards = await this.loadLocalCards();
+                if (cards.length === 0) {
+                    console.warn('⚠️ Aucune carte locale disponible, utilisation du mode hors ligne');
+                    return this.generateOfflineCards(count);
+                }
+                
+                // Sélectionner des cartes aléatoires
+                const randomCards = this.shuffleArray(cards).slice(0, count);
+                // Formater les cartes pour notre application
+                const formattedCards = randomCards.map(card => this.formatCard(card));
+                console.log(`${formattedCards.length} cartes récupérées depuis le fichier local`);
+                return formattedCards;
+            } else {
+                // Mode API externe (ancien code)
+                return this.getRandomCardsFromAPI(count);
+            }
+        } catch (error) {
+            console.warn('⚠️ Erreur lors de la récupération des cartes, utilisation du mode hors ligne');
+            return this.generateOfflineCards(count);
+        }
+    }
+
+    // Ancienne méthode pour l'API externe (gardée pour compatibilité)
+    async getRandomCardsFromAPI(count = 5) {
         try {
             // Vérifier le cache local
             const cacheKey = 'pokemon_cards_cache';
@@ -68,8 +122,33 @@ class ApiService {
         }
     }
 
-    // Récupérer une carte spécifique par ID
+    // Récupérer une carte spécifique par ID (version locale)
     async getCardById(cardId) {
+        try {
+            if (this.useLocalMode) {
+                // Mode local : chercher dans le fichier JSON
+                const cards = await this.loadLocalCards();
+                const card = cards.find(c => c.id === cardId);
+                
+                if (!card) {
+                    throw new Error(`Carte ${cardId} non trouvée dans le fichier local`);
+                }
+                
+                const formattedCard = this.formatCard(card);
+                console.log(`Carte ${cardId} récupérée depuis le fichier local`);
+                return formattedCard;
+            } else {
+                // Mode API externe (ancien code)
+                return this.getCardByIdFromAPI(cardId);
+            }
+        } catch (error) {
+            console.error('Erreur lors de la récupération de la carte:', error);
+            throw error;
+        }
+    }
+
+    // Ancienne méthode pour l'API externe
+    async getCardByIdFromAPI(cardId) {
         try {
             console.log(`Récupération de la carte ${cardId}...`);
             
@@ -98,8 +177,32 @@ class ApiService {
         }
     }
 
-    // Rechercher des cartes par nom
+    // Rechercher des cartes par nom (version locale)
     async searchCards(query, limit = 10) {
+        try {
+            if (this.useLocalMode) {
+                // Mode local : chercher dans le fichier JSON
+                const cards = await this.loadLocalCards();
+                const searchTerm = query.toLowerCase();
+                const filteredCards = cards.filter(card => 
+                    card.name.toLowerCase().includes(searchTerm)
+                ).slice(0, limit);
+                
+                const formattedCards = filteredCards.map(card => this.formatCard(card));
+                console.log(`${formattedCards.length} cartes trouvées pour "${query}" dans le fichier local`);
+                return formattedCards;
+            } else {
+                // Mode API externe (ancien code)
+                return this.searchCardsFromAPI(query, limit);
+            }
+        } catch (error) {
+            console.error('Erreur lors de la recherche de cartes:', error);
+            throw error;
+        }
+    }
+
+    // Ancienne méthode pour l'API externe
+    async searchCardsFromAPI(query, limit = 10) {
         try {
             console.log(`Recherche de cartes avec la requête: ${query}`);
             
@@ -124,6 +227,12 @@ class ApiService {
         }
     }
 
+    // Basculer entre mode local et mode API
+    setLocalMode(enabled) {
+        this.useLocalMode = enabled;
+        console.log(`Mode ${enabled ? 'local' : 'API externe'} activé`);
+    }
+
     // Formater une carte pour notre application
     formatCard(card) {
         return {
@@ -132,12 +241,12 @@ class ApiService {
             types: card.types || ['Colorless'],
             hp: card.hp || 'N/A',
             supertype: card.supertype || 'Pokémon',
-            imageUrl: card.images?.small || null,
-            imageUrlLarge: card.images?.large || null,
+            imageUrl: card.images?.small || card.imageUrl || null,
+            imageUrlLarge: card.images?.large || card.imageUrlLarge || null,
             // Ajouter des propriétés pour la compatibilité avec notre système
             type: card.types?.[0] || 'Colorless',
-            attack: Math.floor(Math.random() * 100) + 50, // Valeur simulée pour l'instant
-            defense: Math.floor(Math.random() * 50) + 25   // Valeur simulée pour l'instant
+            attack: card.attack || Math.floor(Math.random() * 100) + 50,
+            defense: card.defense || Math.floor(Math.random() * 50) + 25
         };
     }
 

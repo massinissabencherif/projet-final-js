@@ -8,7 +8,7 @@ class GameStateService {
             hand: [],
             discard: [], // Ajout de la défausse
             lastDrawTime: null,
-            drawCooldown: 5 * 60 * 1000, // 5 minutes en millisecondes
+            drawCooldown: 10 * 1000, // 10 secondes en millisecondes (pour les tests)
             playerName: 'Dresseur',
             totalCardsDrawn: 0,
             gamesPlayed: 0,
@@ -34,6 +34,7 @@ class GameStateService {
             this.state.wins = data.wins || 0;
             this.state.losses = data.losses || 0;
             this.state.draws = data.draws || 0;
+            this.state.battleState = data.battleState || null; // Charger l'état du combat
             
             console.log('✅ Données chargées depuis le LocalStorage');
             return true;
@@ -57,7 +58,8 @@ class GameStateService {
                 gamesPlayed: this.state.gamesPlayed,
                 wins: this.state.wins,
                 losses: this.state.losses,
-                draws: this.state.draws
+                draws: this.state.draws,
+                battleState: this.state.battleState // Ajouter l'état du combat
             };
             
             const success = storageService.saveGameData(data);
@@ -227,6 +229,20 @@ class GameStateService {
         this.saveGameData();
     }
     setDiscard(discard) { this.state.discard = discard; this.saveGameData(); }
+    
+    // Sauvegarder l'état du combat
+    saveBattleState(battleState) {
+        this.state.battleState = battleState;
+        this.saveGameData();
+    }
+    
+    // Charger l'état du combat
+    loadBattleState() {
+        console.log('=== CHARGEMENT ÉTAT COMBAT GAME STATE ===');
+        console.log('État de combat dans gameState:', this.state.battleState);
+        console.log('=== FIN CHARGEMENT ÉTAT COMBAT GAME STATE ===');
+        return this.state.battleState || null;
+    }
 }
 
 // Exporter une instance unique du service

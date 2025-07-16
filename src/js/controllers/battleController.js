@@ -4,6 +4,7 @@ import { cardService } from '../services/cardService.js';
 import { commentService } from '../services/commentService.js';
 import { notificationService } from '../services/notificationService.js';
 import { gameStateService } from '../services/gameStateService.js';
+import { dragDropService } from '../services/dragDropService.js';
 
 class BattleController {
     constructor() {
@@ -76,14 +77,18 @@ class BattleController {
 
     // Initialiser le combat
     async initBattle() {
-        // Initialiser le deck de l'IA si nécessaire
-        if (battleService.getOpponentDeck().length === 0) {
-            console.log('Initialisation du deck de l\'IA...');
-            await battleService.initOpponentDeck();
+        console.log('Initialisation du combat...');
+        
+        // Initialiser la main de l'IA UNIQUEMENT si aucun état de combat n'a été restauré
+        if (!battleService.battleStateLoaded) {
+            console.log('Premier lancement du combat - initialisation de la main de l\'IA...');
+            await battleService.initOpponentHand(); // 5 cartes directes dans la main, deck vide
+        } else {
+            console.log('État de combat restauré - pas d\'initialisation de la main IA');
         }
         
-        // Initialiser la main de l'IA
-        battleService.initOpponentHand();
+        // S'assurer que l'état de combat est sauvegardé
+        battleService.saveBattleState();
         
         // Afficher les cartes
         this.displayBattleCards();
@@ -96,100 +101,99 @@ class BattleController {
         
         // Afficher le bouton "Finir le combat"
         this.showFinishBattleButton();
+        
+        // Reconfigurer les zones de drop pour la nouvelle arène
+        dragDropService.setupArenaDropZones();
+        
         // Ajouter les listeners drag & drop une seule fois
         if (!this.dragListenersAdded) {
             this.setupBattleDragDropListeners();
             this.dragListenersAdded = true;
         }
+        
+        console.log('Combat initialisé avec succès');
     }
 
     setupBattleDragDropListeners() {
-        const battleDeckContainer = document.getElementById('battle-deck-container');
-        const battleHandContainer = document.getElementById('battle-hand-container');
-        const battlePlayerCombat = document.getElementById('battle-player-combat');
-        if (battleDeckContainer) {
-            // Style debug
-            battleDeckContainer.style.background = 'rgba(0,255,0,0.1)';
-            battleDeckContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
-            battleDeckContainer.addEventListener('drop', (e) => {
-                console.log('DROP sur battleDeckContainer');
-                e.preventDefault();
-                try {
-                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                    console.log('[DEBUG] data reçu sur drop battleDeckContainer:', data);
-                    if (data.location === 'battle-hand') {
-                        this.moveCardFromHandToDeck(data.cardId);
-                    }
-                } catch (err) {
-                    console.error('Erreur lors du drop Main → Pioche', err);
-                }
-            });
-        }
-        if (battleHandContainer) {
-            // Style debug
-            battleHandContainer.style.background = 'rgba(0,0,255,0.1)';
-            battleHandContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
-            battleHandContainer.addEventListener('drop', (e) => {
-                console.log('DROP sur battleHandContainer');
-                e.preventDefault();
-                try {
-                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                    console.log('[DEBUG] data reçu sur drop battleHandContainer:', data);
-                    if (data.location === 'battle-deck') {
-                        this.moveCardFromDeckToHand(data.cardId);
-                    } else if (data.location === 'battle-combat') {
-                        this.moveCardFromBattleCombatToHand();
-                    }
-                } catch (err) {
-                    console.error('Erreur lors du drop Pioche/Zone de combat → Main', err);
-                }
-            });
-        }
-        if (battlePlayerCombat) {
-            // Style debug
-            battlePlayerCombat.style.background = 'rgba(255,0,0,0.1)';
-            battlePlayerCombat.addEventListener('dragover', (e) => { e.preventDefault(); });
-            battlePlayerCombat.addEventListener('drop', (e) => {
-                console.log('DROP sur battlePlayerCombat');
-                e.preventDefault();
-                try {
-                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                    console.log('[DEBUG] data reçu sur drop battlePlayerCombat:', data);
-                    if (data.location === 'battle-hand') {
-                        this.moveCardFromHandToBattleCombat(data.cardId);
-                    } else if (data.location === 'battle-combat') {
-                        this.moveCardFromBattleCombatToHand();
-                    }
-                } catch (err) {
-                    console.error('Erreur lors du drop Main → Zone de combat', err);
-                }
-            });
-        }
+        // Écouter les événements de déplacement de cartes
+        document.addEventListener('cardMoved', (e) => {
+            const { fromLocation, toLocation, cardIndex, cardData } = e.detail;
+            console.log(`Événement cardMoved: ${fromLocation} -> ${toLocation}`);
+            
+            // Gérer les déplacements selon les zones
+            if (fromLocation === 'battle-hand' && toLocation === 'battle-player-combat') {
+                this.moveCardFromHandToBattleCombat(cardData.id);
+            } else if (fromLocation === 'battle-player-combat' && toLocation === 'battle-hand') {
+                this.moveCardFromBattleCombatToHand();
+            } else if (fromLocation === 'battle-deck' && toLocation === 'battle-hand') {
+                this.moveCardFromDeckToHand(cardData.id);
+            } else if (fromLocation === 'battle-hand' && toLocation === 'battle-discard') {
+                this.moveCardFromHandToDiscard(cardData.id);
+            } else if (fromLocation === 'battle-player-combat' && toLocation === 'battle-discard') {
+                this.moveCardFromBattleCombatToDiscard();
+            } else if (fromLocation === 'battle-deck' && toLocation === 'battle-discard') {
+                this.moveCardFromDeckToDiscard(cardData.id);
+            } else if (fromLocation === 'battle-discard' && toLocation === 'battle-hand') {
+                this.moveCardFromDiscardToHand(cardData.id);
+            } else if (fromLocation === 'battle-discard' && toLocation === 'battle-deck') {
+                this.moveCardFromDiscardToDeck(cardData.id);
+            } else if (fromLocation === 'battle-opponent-hand' && toLocation === 'battle-opponent-combat') {
+                // L'IA place une carte en zone de combat
+                console.log('IA place une carte en zone de combat');
+            } else if (fromLocation === 'battle-opponent-combat' && toLocation === 'battle-opponent-hand') {
+                // L'IA retire une carte de la zone de combat
+                console.log('IA retire une carte de la zone de combat');
+            } else if (fromLocation === 'battle-opponent-combat' && toLocation === 'battle-opponent-discard') {
+                // L'IA défausse une carte de la zone de combat
+                console.log('IA défausse une carte de la zone de combat');
+            }
+        });
     }
 
     // Afficher les cartes dans la section de combat
     displayBattleCards() {
         const deck = gameStateService.getDeck();
         const hand = gameStateService.getHand();
+        const discard = gameStateService.getDiscard();
         const opponentHand = battleService.getOpponentHand();
         const battlePlayerCard = battleService.getBattlePlayerCard();
         const opponentBattleCard = battleService.getOpponentBattleCard();
 
-        // Afficher la pioche et la main du joueur
+        // Vérifier et compléter automatiquement la main de l'IA si nécessaire
+        if (typeof battleService.checkAndFillOpponentHand === 'function') {
+            battleService.checkAndFillOpponentHand();
+        }
+
+        // Afficher la pioche du joueur
         const battleDeckContainer = document.getElementById('battle-deck-container');
-        const battleHandContainer = document.getElementById('battle-hand-container');
-        
         if (battleDeckContainer) {
-            cardService.displayCardsInContainer(battleDeckContainer, deck, 'battle-deck', {
-                isBattleMode: true,
-                onCardClick: (index, card) => this.handleDeckCardClick(card)
+            battleDeckContainer.innerHTML = '';
+            deck.forEach((card, index) => {
+                const deckCardElement = cardService.createBattleCardElement(card, 'battle-deck', index);
+                deckCardElement.addEventListener('click', () => this.handleDeckCardClick(card));
+                battleDeckContainer.appendChild(deckCardElement);
             });
         }
         
+        // Afficher la défausse du joueur
+        const battleDiscardContainer = document.getElementById('battle-discard-container');
+        if (battleDiscardContainer) {
+            battleDiscardContainer.innerHTML = '';
+            discard.forEach((card, index) => {
+                const discardCardElement = cardService.createBattleCardElement(card, 'battle-discard', index);
+                discardCardElement.addEventListener('click', () => this.handleDiscardCardClick(card));
+                battleDiscardContainer.appendChild(discardCardElement);
+            });
+        }
+        
+        // Afficher la main du joueur
+        const battleHandContainer = document.getElementById('battle-hand-container');
         if (battleHandContainer) {
-            cardService.displayCardsInContainer(battleHandContainer, hand, 'battle-hand', {
-                isBattleMode: true,
-                onCardClick: (index, card) => this.handleHandCardClick(card)
+            battleHandContainer.innerHTML = '';
+            hand.forEach((card, index) => {
+                const cardElement = cardService.createBattleCardElement(card, 'battle-hand', index);
+                cardElement.addEventListener('click', () => this.handleHandCardClick(card));
+                battleHandContainer.appendChild(cardElement);
             });
         }
 
@@ -200,15 +204,6 @@ class BattleController {
             if (battlePlayerCard) {
                 const cardElement = cardService.createBattleCardElement(battlePlayerCard, 'battle-player-combat', 0);
                 cardElement.addEventListener('click', () => this.handleBattleCardClick());
-                // Permettre de retirer la carte (optionnel)
-                cardElement.draggable = true;
-                cardElement.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.setData('text/plain', JSON.stringify({
-                        cardId: battlePlayerCard.id,
-                        from: 'battle-combat',
-                        index: 0
-                    }));
-                });
                 battlePlayerCombat.appendChild(cardElement);
             }
         }
@@ -223,27 +218,48 @@ class BattleController {
             }
         }
 
-        // Afficher la main de l'adversaire
-        const opponentHandContainer = document.getElementById('battle-opponent-hand-container');
-        if (opponentHandContainer) {
-            cardService.displayCardsInContainer(opponentHandContainer, opponentHand, 'battle-opponent-hand', {
-                isBattleMode: true,
-                showSelection: true,
-                selectedIndex: opponentHand.findIndex(card => card.id === opponentBattleCard?.id)
+        // Afficher la défausse de l'IA
+        const opponentDiscardContainer = document.getElementById('battle-opponent-discard-container');
+        if (opponentDiscardContainer) {
+            opponentDiscardContainer.innerHTML = '';
+            const opponentDiscard = battleService.getOpponentDiscard();
+            console.log('Affichage défausse IA:', opponentDiscard.length, 'cartes');
+            opponentDiscard.forEach((card, index) => {
+                const discardCardElement = cardService.createBattleCardElement(card, 'battle-opponent-discard', index);
+                opponentDiscardContainer.appendChild(discardCardElement);
             });
         }
 
-        // Afficher la défausse du joueur
-        const battleDiscardContainer = document.getElementById('battle-discard-container');
-        const discard = gameStateService.getDiscard();
-        if (battleDiscardContainer) {
-            cardService.displayCardsInContainer(battleDiscardContainer, discard, 'battle-discard', {
-                isBattleMode: true
+        // Afficher la main de l'adversaire
+        const opponentHandContainer = document.getElementById('battle-opponent-hand-container');
+        if (opponentHandContainer) {
+            opponentHandContainer.innerHTML = '';
+            opponentHand.forEach((card, index) => {
+                const cardElement = cardService.createBattleCardElement(card, 'battle-opponent-hand', index);
+                // Marquer la carte sélectionnée pour le combat
+                if (card.id === opponentBattleCard?.id) {
+                    cardElement.classList.add('selected-battle-card');
+                }
+                opponentHandContainer.appendChild(cardElement);
+            });
+        }
+
+        // Afficher le deck de l'IA
+        const opponentDeckContainer = document.getElementById('battle-opponent-deck-container');
+        if (opponentDeckContainer) {
+            opponentDeckContainer.innerHTML = '';
+            const opponentDeck = battleService.getOpponentDeck();
+            opponentDeck.forEach((card, index) => {
+                const deckCardElement = cardService.createBattleCardElement(card, 'battle-opponent-deck', index);
+                opponentDeckContainer.appendChild(deckCardElement);
             });
         }
 
         // Afficher le bouton de combat si les deux zones sont remplies
         this.updateBattleButton();
+        
+        // Mettre à jour les zones de drop après l'affichage des cartes
+        dragDropService.setupArenaDropZones();
     }
 
     // Gérer le clic sur une carte de la pioche
@@ -258,6 +274,19 @@ class BattleController {
         if (gameStateService.moveCard('deck', 'hand', card.id)) {
             this.displayBattleCards();
             notificationService.success(`${card.name} ajouté à votre main`);
+        }
+    }
+
+    // Gérer le clic sur une carte de la défausse
+    handleDiscardCardClick(card) {
+        console.log('Carte de défausse cliquée:', card);
+        // Afficher les détails de la carte dans la modal
+        const modal = document.getElementById('card-modal');
+        const cardDetails = document.getElementById('card-details');
+        
+        if (modal && cardDetails) {
+            cardDetails.innerHTML = cardService.createCardDetailHTML(card);
+            modal.style.display = 'block';
         }
     }
 
@@ -315,17 +344,10 @@ class BattleController {
             notificationService.warning(result.error);
             return;
         }
-        // Envoyer les cartes de combat en défausse immédiatement après le combat
-        if (battleService.getBattlePlayerCard()) {
-            const discard = gameStateService.getDiscard();
-            discard.push(battleService.getBattlePlayerCard());
-            gameStateService.setDiscard(discard);
-            battleService.setBattlePlayerCard(null);
-        }
-        if (battleService.getOpponentBattleCard()) {
-            battleService.setOpponentBattleCard(null);
-        }
-        this.displayBattleCards();
+        
+        // Défausse automatique des cartes de combat
+        this.autoDiscardBattleCards();
+        
         // Afficher le résultat
         this.showBattleResult(result);
         
@@ -335,6 +357,36 @@ class BattleController {
         
         // Afficher la zone de commentaires
         this.showBattleCommentsSection(true);
+    }
+
+    // Défausse automatique des cartes de combat
+    autoDiscardBattleCards() {
+        console.log('=== DÉFAUSSE AUTOMATIQUE ===');
+        const discard = gameStateService.getDiscard();
+        
+        // Défausser la carte du joueur
+        if (battleService.getBattlePlayerCard()) {
+            const playerCard = battleService.getBattlePlayerCard();
+            discard.push(playerCard);
+            battleService.setBattlePlayerCard(null);
+            notificationService.info(`${playerCard.name} défaussé automatiquement`);
+            console.log('Carte joueur défaussée:', playerCard.name);
+        }
+        
+        // Défausser la carte de l'IA dans sa propre défausse
+        if (battleService.getOpponentBattleCard()) {
+            const opponentCard = battleService.getOpponentBattleCard();
+            battleService.moveOpponentCardToDiscard(opponentCard.id);
+            battleService.setOpponentBattleCard(null);
+            notificationService.info(`${opponentCard.name} défaussé automatiquement`);
+            console.log('Carte IA défaussée:', opponentCard.name);
+            console.log('Défausse IA après:', battleService.getOpponentDiscard().length);
+        }
+        
+        gameStateService.setDiscard(discard);
+        console.log('État sauvegardé après défausse');
+        this.displayBattleCards();
+        console.log('=== FIN DÉFAUSSE AUTOMATIQUE ===');
     }
 
     // Afficher le résultat du combat
@@ -548,6 +600,86 @@ class BattleController {
             battleService.setBattlePlayerCard(null);
             gameStateService.setHand(hand);
             this.displayBattleCards();
+        }
+    }
+
+    // Nouvelle méthode pour défausser une carte de la main
+    moveCardFromHandToDiscard(cardId) {
+        const hand = gameStateService.getHand();
+        const discard = gameStateService.getDiscard();
+        const cardIdx = hand.findIndex(c => c.id === cardId);
+        
+        if (cardIdx !== -1) {
+            const card = hand.splice(cardIdx, 1)[0];
+            discard.push(card);
+            gameStateService.setHand(hand);
+            gameStateService.setDiscard(discard);
+            this.displayBattleCards();
+            notificationService.info(`${card.name} défaussé`);
+        }
+    }
+
+    // Nouvelle méthode pour défausser une carte de la zone de combat
+    moveCardFromBattleCombatToDiscard() {
+        const discard = gameStateService.getDiscard();
+        const battleCard = battleService.getBattlePlayerCard();
+        
+        if (battleCard) {
+            discard.push(battleCard);
+            battleService.setBattlePlayerCard(null);
+            gameStateService.setDiscard(discard);
+            this.displayBattleCards();
+            notificationService.info(`${battleCard.name} défaussé de la zone de combat`);
+        }
+    }
+
+    // Nouvelle méthode pour défausser une carte du deck
+    moveCardFromDeckToDiscard(cardId) {
+        const deck = gameStateService.getDeck();
+        const discard = gameStateService.getDiscard();
+        const cardIdx = deck.findIndex(c => c.id === cardId);
+        
+        if (cardIdx !== -1) {
+            const card = deck.splice(cardIdx, 1)[0];
+            discard.push(card);
+            gameStateService.setDeck(deck);
+            gameStateService.setDiscard(discard);
+            this.displayBattleCards();
+            notificationService.info(`${card.name} défaussé du deck`);
+        }
+    }
+
+    // Nouvelle méthode pour remettre une carte de la défausse dans la main
+    moveCardFromDiscardToHand(cardId) {
+        const discard = gameStateService.getDiscard();
+        const hand = gameStateService.getHand();
+        const cardIdx = discard.findIndex(c => c.id === cardId);
+        
+        if (cardIdx !== -1 && hand.length < 5) {
+            const card = discard.splice(cardIdx, 1)[0];
+            hand.push(card);
+            gameStateService.setDiscard(discard);
+            gameStateService.setHand(hand);
+            this.displayBattleCards();
+            notificationService.info(`${card.name} ajouté à la main depuis la défausse`);
+        } else if (hand.length >= 5) {
+            notificationService.warning('La main est pleine (5 cartes max)');
+        }
+    }
+
+    // Nouvelle méthode pour remettre une carte de la défausse dans le deck
+    moveCardFromDiscardToDeck(cardId) {
+        const discard = gameStateService.getDiscard();
+        const deck = gameStateService.getDeck();
+        const cardIdx = discard.findIndex(c => c.id === cardId);
+        
+        if (cardIdx !== -1) {
+            const card = discard.splice(cardIdx, 1)[0];
+            deck.push(card);
+            gameStateService.setDiscard(discard);
+            gameStateService.setDeck(deck);
+            this.displayBattleCards();
+            notificationService.info(`${card.name} remis dans le deck depuis la défausse`);
         }
     }
 
