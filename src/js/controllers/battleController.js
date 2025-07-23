@@ -2,7 +2,6 @@
 import { battleService } from '../services/battleService.js';
 import { cardService } from '../services/cardService.js';
 import { commentService } from '../services/commentService.js';
-import { notificationService } from '../services/notificationService.js';
 import { gameStateService } from '../services/gameStateService.js';
 import { dragDropService } from '../services/dragDropService.js';
 
@@ -18,7 +17,6 @@ class BattleController {
         
         this.setupEventListeners();
         this.isInitialized = true;
-        console.log('Contrôleur de combat initialisé');
     }
 
     // Configurer les écouteurs d'événements
@@ -62,7 +60,7 @@ class BattleController {
         const hand = gameStateService.getHand();
         
         if (deck.length === 0 && hand.length === 0) {
-            notificationService.warning('Vous devez d\'abord tirer des cartes avant de lancer un combat !');
+            console.warn('Vous devez d\'abord tirer des cartes avant de lancer un combat !');
             return;
         }
         
@@ -78,22 +76,18 @@ class BattleController {
         
         // Initialiser le combat
         this.initBattle().then(() => {
-            notificationService.info('Mode combat activé ! Placez une carte dans votre zone de combat.');
         }).catch(error => {
             console.error('Erreur lors de l\'initialisation du combat:', error);
-            notificationService.error('Erreur lors de l\'initialisation du combat');
         });
     }
 
     // Initialiser le combat
     async initBattle() {
-        console.log('Initialisation du combat...');
         
         // Marquer que nous sommes en mode combat
         battleService.inBattle = true;
         
         // Initialiser la main de l'IA pour un nouveau combat
-        console.log('Initialisation de la main de l\'IA pour le nouveau combat...');
         await battleService.initOpponentHand(); // 5 cartes directes dans la main, deck vide
         
         // S'assurer que l'état de combat est sauvegardé
@@ -119,15 +113,12 @@ class BattleController {
             this.setupBattleDragDropListeners();
             this.dragListenersAdded = true;
         }
-        
-        console.log('Combat initialisé avec succès');
     }
 
     setupBattleDragDropListeners() {
         // Écouter les événements de déplacement de cartes
         document.addEventListener('cardMoved', (e) => {
             const { fromLocation, toLocation, cardIndex, cardData } = e.detail;
-            console.log(`Événement cardMoved: ${fromLocation} -> ${toLocation}`);
             
             // Gérer les déplacements selon les zones
             if (fromLocation === 'battle-hand' && toLocation === 'battle-player-combat') {
@@ -148,13 +139,10 @@ class BattleController {
                 this.moveCardFromDiscardToDeck(cardData.id);
             } else if (fromLocation === 'battle-opponent-hand' && toLocation === 'battle-opponent-combat') {
                 // L'IA place une carte en zone de combat
-                console.log('IA place une carte en zone de combat');
             } else if (fromLocation === 'battle-opponent-combat' && toLocation === 'battle-opponent-hand') {
                 // L'IA retire une carte de la zone de combat
-                console.log('IA retire une carte de la zone de combat');
             } else if (fromLocation === 'battle-opponent-combat' && toLocation === 'battle-opponent-discard') {
                 // L'IA défausse une carte de la zone de combat
-                console.log('IA défausse une carte de la zone de combat');
             }
         });
     }
@@ -232,7 +220,6 @@ class BattleController {
         if (opponentDiscardContainer) {
             opponentDiscardContainer.innerHTML = '';
             const opponentDiscard = battleService.getOpponentDiscard();
-            console.log('Affichage défausse IA:', opponentDiscard.length, 'cartes');
             opponentDiscard.forEach((card, index) => {
                 const discardCardElement = cardService.createBattleCardElement(card, 'battle-opponent-discard', index);
                 opponentDiscardContainer.appendChild(discardCardElement);
@@ -275,20 +262,18 @@ class BattleController {
     handleDeckCardClick(card) {
         const hand = gameStateService.getHand();
         if (hand.length >= 5) {
-            notificationService.warning('La main est pleine (5 cartes max)');
+            console.warn('La main est pleine (5 cartes max)');
             return;
         }
         
         // Déplacer la carte de la pioche vers la main
         if (gameStateService.moveCard('deck', 'hand', card.id)) {
             this.displayBattleCards();
-            notificationService.success(`${card.name} ajouté à votre main`);
         }
     }
 
     // Gérer le clic sur une carte de la défausse
     handleDiscardCardClick(card) {
-        console.log('Carte de défausse cliquée:', card);
         // Afficher les détails de la carte dans la modal
         const modal = document.getElementById('card-modal');
         const cardDetails = document.getElementById('card-details');
@@ -309,11 +294,9 @@ class BattleController {
             if (success) {
                 gameStateService.setHand(hand);
                 this.displayBattleCards();
-                notificationService.success(`${card.name} placé en zone de combat`);
             }
         } catch (error) {
             console.error('Erreur lors du placement en zone de combat:', error);
-            notificationService.error('Erreur lors du placement en zone de combat');
         }
     }
 
@@ -325,7 +308,6 @@ class BattleController {
         if (battleService.moveCardFromBattleZoneToHand(hand)) {
             gameStateService.setHand(hand);
             this.displayBattleCards();
-            notificationService.info('Carte retirée de la zone de combat');
         }
     }
 
@@ -350,7 +332,7 @@ class BattleController {
         const result = battleService.executeBattle();
         
         if (result.error) {
-            notificationService.warning(result.error);
+            console.warn(result.error);
             return;
         }
         
@@ -370,7 +352,6 @@ class BattleController {
 
     // Défausse automatique des cartes de combat
     autoDiscardBattleCards() {
-        console.log('=== DÉFAUSSE AUTOMATIQUE ===');
         const discard = gameStateService.getDiscard();
         
         // Défausser la carte du joueur
@@ -378,8 +359,6 @@ class BattleController {
             const playerCard = battleService.getBattlePlayerCard();
             discard.push(playerCard);
             battleService.setBattlePlayerCard(null);
-            notificationService.info(`${playerCard.name} défaussé automatiquement`);
-            console.log('Carte joueur défaussée:', playerCard.name);
         }
         
         // Défausser la carte de l'IA dans sa propre défausse
@@ -387,15 +366,10 @@ class BattleController {
             const opponentCard = battleService.getOpponentBattleCard();
             battleService.moveOpponentCardToDiscard(opponentCard.id);
             battleService.setOpponentBattleCard(null);
-            notificationService.info(`${opponentCard.name} défaussé automatiquement`);
-            console.log('Carte IA défaussée:', opponentCard.name);
-            console.log('Défausse IA après:', battleService.getOpponentDiscard().length);
         }
         
         gameStateService.setDiscard(discard);
-        console.log('État sauvegardé après défausse');
         this.displayBattleCards();
-        console.log('=== FIN DÉFAUSSE AUTOMATIQUE ===');
     }
 
     // Afficher le résultat du combat
@@ -532,7 +506,7 @@ class BattleController {
         }
         
         // Notification de confirmation
-        notificationService.success('Combat terminé ! Vous pouvez maintenant lancer un nouveau combat.');
+        console.log('Combat terminé ! Vous pouvez maintenant lancer un nouveau combat.');
     }
 
     // Masquer la section de combat
@@ -605,9 +579,8 @@ class BattleController {
                     commentService.saveComment(validation.text);
                     this.renderBattleComments();
                     input.value = '';
-                    notificationService.success('Commentaire ajouté');
                 } else {
-                    notificationService.error(validation.error);
+                    console.error(validation.error);
                 }
             }
         };
@@ -642,20 +615,18 @@ class BattleController {
         const deck = gameStateService.getDeck();
         const hand = gameStateService.getHand();
         const cardIdx = deck.findIndex(c => c.id === cardId);
-        console.log('[DEBUG] Avant déplacement deck:', deck.map(c => c.name), 'hand:', hand.map(c => c.name));
         if (cardIdx === -1) {
-            console.warn('[DEBUG] Carte non trouvée dans la pioche:', cardId);
+            console.warn('Carte non trouvée dans la pioche:', cardId);
             return;
         }
         if (hand.length >= 5) {
-            notificationService.warning('La main est pleine (5 cartes max)');
+            console.warn('La main est pleine (5 cartes max)');
             return;
         }
         const card = deck.splice(cardIdx, 1)[0];
         hand.push(card);
         gameStateService.setDeck(deck);
         gameStateService.setHand(hand);
-        console.log('[DEBUG] Après déplacement deck:', deck.map(c => c.name), 'hand:', hand.map(c => c.name));
         this.displayBattleCards();
     }
     moveCardFromHandToDeck(cardId) {
@@ -680,7 +651,6 @@ class BattleController {
             }
         } catch (error) {
             console.error('Erreur lors du déplacement vers la zone de combat:', error);
-            notificationService.error('Erreur lors du déplacement vers la zone de combat');
         }
     }
     moveCardFromBattleCombatToHand() {
@@ -705,7 +675,6 @@ class BattleController {
             gameStateService.setHand(hand);
             gameStateService.setDiscard(discard);
             this.displayBattleCards();
-            notificationService.info(`${card.name} défaussé`);
         }
     }
 
@@ -719,7 +688,6 @@ class BattleController {
             battleService.setBattlePlayerCard(null);
             gameStateService.setDiscard(discard);
             this.displayBattleCards();
-            notificationService.info(`${battleCard.name} défaussé de la zone de combat`);
         }
     }
 
@@ -735,7 +703,6 @@ class BattleController {
             gameStateService.setDeck(deck);
             gameStateService.setDiscard(discard);
             this.displayBattleCards();
-            notificationService.info(`${card.name} défaussé du deck`);
         }
     }
 
@@ -751,9 +718,8 @@ class BattleController {
             gameStateService.setDiscard(discard);
             gameStateService.setHand(hand);
             this.displayBattleCards();
-            notificationService.info(`${card.name} ajouté à la main depuis la défausse`);
         } else if (hand.length >= 5) {
-            notificationService.warning('La main est pleine (5 cartes max)');
+            console.warn('La main est pleine (5 cartes max)');
         }
     }
 
@@ -769,7 +735,6 @@ class BattleController {
             gameStateService.setDiscard(discard);
             gameStateService.setDeck(deck);
             this.displayBattleCards();
-            notificationService.info(`${card.name} remis dans le deck depuis la défausse`);
         }
     }
 

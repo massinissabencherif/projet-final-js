@@ -19,7 +19,6 @@ class StorageService {
             };
             
             localStorage.setItem(this.storageKey, JSON.stringify(dataToSave));
-            console.log('Données de jeu sauvegardées avec succès');
             return true;
         } catch (error) {
             console.error('Erreur lors de la sauvegarde:', error);
@@ -33,7 +32,6 @@ class StorageService {
             const savedData = localStorage.getItem(this.storageKey);
             
             if (!savedData) {
-                console.log('Aucune donnée sauvegardée trouvée');
                 return this.getDefaultGameData();
             }
 
@@ -45,7 +43,6 @@ class StorageService {
                 return this.restoreBackup();
             }
 
-            console.log('Données de jeu chargées avec succès');
             return parsedData;
         } catch (error) {
             console.error('Erreur lors du chargement des données:', error);
@@ -102,7 +99,6 @@ class StorageService {
             const currentData = localStorage.getItem(this.storageKey);
             if (currentData) {
                 localStorage.setItem(this.backupKey, currentData);
-                console.log('Sauvegarde de sécurité créée');
             }
         } catch (error) {
             console.error('Erreur lors de la création de la sauvegarde:', error);
@@ -117,7 +113,6 @@ class StorageService {
                 const parsedBackup = JSON.parse(backupData);
                 if (this.validateGameData(parsedBackup)) {
                     localStorage.setItem(this.storageKey, backupData);
-                    console.log('Sauvegarde restaurée avec succès');
                     return parsedBackup;
                 }
             }
@@ -132,20 +127,12 @@ class StorageService {
     // Sauvegarder une partie spécifique des données
     savePartialData(key, value) {
         try {
-            console.log(`=== SAUVEGARDE PARTIELLE: ${key} ===`);
             const currentData = this.loadGameData();
-            console.log('Données actuelles:', currentData);
             currentData[key] = value;
             currentData.lastSaveTime = Date.now();
             
             const success = this.saveGameData(currentData);
-            console.log(`Données partielles sauvegardées: ${key}`, success);
             
-            // Vérifier que les données sont bien sauvegardées
-            const savedData = localStorage.getItem(this.storageKey);
-            console.log('Données brutes dans localStorage:', savedData);
-            console.log('Données parsées dans localStorage:', savedData ? JSON.parse(savedData) : 'null');
-            console.log(`=== FIN SAUVEGARDE PARTIELLE: ${key} ===`);
             return success;
         } catch (error) {
             console.error(`Erreur lors de la sauvegarde partielle de ${key}:`, error);
@@ -156,15 +143,8 @@ class StorageService {
     // Charger une partie spécifique des données
     loadPartialData(key, defaultValue = null) {
         try {
-            console.log(`=== CHARGEMENT PARTIEL: ${key} ===`);
             const gameData = this.loadGameData();
-            console.log('Données complètes chargées:', gameData);
-            console.log(`Clés disponibles:`, Object.keys(gameData));
-            console.log(`Recherche de la clé: ${key}`);
-            console.log(`Valeur de ${key}:`, gameData[key]);
             const result = gameData[key] !== undefined ? gameData[key] : defaultValue;
-            console.log(`Résultat pour ${key}:`, result);
-            console.log(`=== FIN CHARGEMENT PARTIEL: ${key} ===`);
             return result;
         } catch (error) {
             console.error(`Erreur lors du chargement partiel de ${key}:`, error);
@@ -175,21 +155,15 @@ class StorageService {
     // Supprimer une partie spécifique des données
     removePartialData(key) {
         try {
-            console.log(`=== SUPPRESSION PARTIELLE: ${key} ===`);
             const currentData = this.loadGameData();
-            console.log('Données actuelles:', currentData);
             
             if (key in currentData) {
                 delete currentData[key];
                 currentData.lastSaveTime = Date.now();
                 
                 const success = this.saveGameData(currentData);
-                console.log(`Données partielles supprimées: ${key}`, success);
-                console.log(`=== FIN SUPPRESSION PARTIELLE: ${key} ===`);
                 return success;
             } else {
-                console.log(`Clé ${key} non trouvée dans les données`);
-                console.log(`=== FIN SUPPRESSION PARTIELLE: ${key} ===`);
                 return true; // Considéré comme un succès si la clé n'existe pas
             }
         } catch (error) {
@@ -203,7 +177,6 @@ class StorageService {
         try {
             localStorage.removeItem(this.storageKey);
             localStorage.removeItem(this.backupKey);
-            console.log('Toutes les données ont été effacées');
             return true;
         } catch (error) {
             console.error('Erreur lors de l\'effacement des données:', error);

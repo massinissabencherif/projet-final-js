@@ -1,0 +1,31 @@
+1. Système complet de boosters avec timer, animation et persistance
+Branche : feature/boosters-timer-persistence
+Tirage de boosters (packs de 5 cartes) toutes les X minutes (timer persistant même après refresh)
+Animation d’ouverture carte par carte, sons, feedback visuel
+Ajout automatique des cartes tirées à la collection
+Désactivation du bouton pendant le cooldown, affichage du temps restant
+2. Gestion avancée de la collection de cartes
+Branche : feature/collection-advanced
+Grille de visualisation de toutes les cartes possédées
+Recherche instantanée, tri alphabétique
+Badge de quantité pour les doublons
+Ajout direct au deck de combat depuis la collection (avec vérification des doublons et de la limite)
+Modal de détail de carte (statistiques, image, types, etc.)
+3. Deck building ergonomique et interactif
+Branche : feature/deck-building-ergonomique
+Limite stricte à 30 cartes dans le deck de combat
+Mélange et vidage du deck (boutons dédiés)
+Drag & drop ou clic pour piocher dans la main
+Rotation automatique de la main (main pleine → la première carte retourne dans le deck)
+4. Historique et statistiques de combat
+Branche : feature/combat-history-stats
+Affichage des victoires, défaites, taux de victoire, nombre total de combats
+Historique des 20 derniers combats (date, résultat, possibilité de vider l’historique)
+Affichage dynamique et mise à jour en temps réel
+5. Callback unifié et persistance centralisée
+Branche : feature/state-sync-persistence
+Fonction centrale de synchronisation (mise à jour UI + sauvegarde localStorage après chaque action)
+Restauration complète de l’état à l’ouverture de l’application
+6. Modal de détail de carte réutilisable
+Branche : feature/card-detail-modal
+Modal réutilisable pour afficher les détails d’une carte depuis n’importe quelle vue (collection, deck, main, etc.)

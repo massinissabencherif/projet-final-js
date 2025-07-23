@@ -20,15 +20,12 @@ class BattleService {
     // Initialiser le deck de l'IA avec 5 cartes différentes du joueur
     async initOpponentDeck() {
         try {
-            console.log('Initialisation du deck de l\'IA...');
             // Récupérer 5 cartes aléatoires pour l'IA
             const opponentCards = await apiService.getRandomCards(5);
             this.opponentDeck = opponentCards;
-            console.log(`✅ Deck de l'IA initialisé avec ${opponentCards.length} cartes`);
             this.saveBattleState();
             return true;
         } catch (error) {
-            console.warn('⚠️ Erreur lors de l\'initialisation du deck IA, utilisation du mode hors ligne');
             // Mode hors ligne : générer 5 cartes factices pour l'IA
             this.opponentDeck = this.generateOfflineOpponentCards(5);
             this.saveBattleState();
@@ -70,7 +67,6 @@ class BattleService {
     // Initialiser la main de l'IA pour le combat (5 cartes directes, deck vide)
     async initOpponentHand() {
         try {
-            console.log('🔄 Initialisation de la main de l\'IA...');
             
             // Récupérer 5 cartes aléatoires pour la main de l'IA
             const opponentCards = await apiService.getRandomCards(5);
@@ -85,12 +81,7 @@ class BattleService {
                 this.opponentDiscard = [];
             }
             
-            console.log(`✅ Main de l'IA initialisée avec ${this.opponentHand.length} cartes`);
-            console.log(`✅ Deck IA: ${this.opponentDeck.length} cartes (vide au départ)`);
-            console.log(`✅ Défausse IA: ${this.opponentDiscard.length} cartes`);
-            this.saveBattleState();
         } catch (error) {
-            console.error('❌ Erreur lors de l\'initialisation de la main IA:', error);
             // Fallback : cartes factices
             this.opponentHand = this.generateOfflineOpponentCards(5);
             this.opponentDeck = [];
@@ -110,7 +101,6 @@ class BattleService {
             const randomIndex = Math.floor(Math.random() * this.opponentDeck.length);
             const drawnCard = this.opponentDeck.splice(randomIndex, 1)[0];
             this.opponentHand.push(drawnCard);
-            console.log(`✅ L'IA a pioché ${drawnCard.name} (main: ${this.opponentHand.length}/5 cartes)`);
             
             // Vérifier si la main doit être complétée automatiquement
             this.checkAndFillOpponentHand();
@@ -146,7 +136,6 @@ class BattleService {
 
     // Sauvegarder l'état du combat
     saveBattleState() {
-        console.log('=== SAUVEGARDE DE L\'ÉTAT DU COMBAT ===');
         const battleData = {
             opponentHand: this.opponentHand,
             opponentDeck: this.opponentDeck, // Sauvegarder le deck de l'IA
@@ -156,34 +145,19 @@ class BattleService {
             selectedBattleCard: this.selectedBattleCard,
             inBattle: this.inBattle
         };
-        console.log('Données à sauvegarder:', battleData);
         
         const success1 = storageService.savePartialData('battleState', battleData);
         const success2 = gameStateService.saveBattleState(battleData);
         
-        console.log('Sauvegarde storageService:', success1);
-        console.log('Sauvegarde gameStateService:', success2);
-        console.log('État de combat sauvegardé:', { 
-            inBattle: this.inBattle, 
-            opponentHand: this.opponentHand.length,
-            opponentDeck: this.opponentDeck.length,
-            opponentDiscard: this.opponentDiscard.length
-        });
-        console.log('=== FIN SAUVEGARDE ÉTAT COMBAT ===');
     }
 
     // Charger l'état du combat
     loadBattleState() {
-        console.log('=== CHARGEMENT DE L\'ÉTAT DU COMBAT ===');
-        // Log avant chargement
-        console.log('[DEBUG] AVANT chargement - main IA:', this.opponentHand, 'deck IA:', this.opponentDeck);
         // Essayer d'abord gameStateService, puis storageService comme fallback
         let battleData = gameStateService.loadBattleState();
         if (!battleData) {
-            console.log('Aucun état de combat dans gameStateService, essai avec storageService...');
             battleData = storageService.loadPartialData('battleState', {});
         }
-        console.log('Données brutes chargées:', battleData);
         this.opponentHand = battleData.opponentHand || [];
         this.opponentDeck = battleData.opponentDeck || [];
         this.opponentDiscard = battleData.opponentDiscard || [];
@@ -192,28 +166,14 @@ class BattleService {
         this.selectedBattleCard = battleData.selectedBattleCard || null;
         this.inBattle = battleData.inBattle || false;
         this.battleStateLoaded = true;
-        // Log après chargement
-        console.log('[DEBUG] APRÈS chargement - main IA:', this.opponentHand, 'deck IA:', this.opponentDeck);
-        console.log('État de combat chargé:', { 
-            inBattle: this.inBattle, 
-            opponentHand: this.opponentHand.length,
-            opponentDeck: this.opponentDeck.length,
-            opponentDiscard: this.opponentDiscard.length,
-            battlePlayerCard: this.battlePlayerCard ? 'présente' : 'absente',
-            opponentBattleCard: this.opponentBattleCard ? 'présente' : 'absente'
-        });
-        console.log('=== FIN CHARGEMENT ÉTAT COMBAT ===');
     }
 
     // Sauvegarder l'état avant le combat
     savePreBattleState(deck, hand) {
-        console.log('=== SAUVEGARDE ÉTAT AVANT COMBAT ===');
         this.preBattleDeck = JSON.parse(JSON.stringify(deck));
         this.preBattleHand = JSON.parse(JSON.stringify(hand));
         this.inBattle = true;
-        console.log('inBattle défini à:', this.inBattle);
         this.saveBattleState();
-        console.log('=== FIN SAUVEGARDE ÉTAT AVANT COMBAT ===');
     }
 
     // Restaurer l'état d'avant combat
@@ -305,7 +265,6 @@ class BattleService {
         if (idx !== -1) {
             const [card] = this.opponentHand.splice(idx, 1);
             this.opponentDiscard.push(card);
-            console.log(`✅ Carte ${card.name} défaussée de la main IA (main: ${this.opponentHand.length}/5 cartes)`);
             
             // Compléter automatiquement la main si elle a moins de 5 cartes et qu'il y a des cartes dans le deck
             this.checkAndFillOpponentHand();
@@ -316,7 +275,6 @@ class BattleService {
 
     // Ajoute exactement 'count' cartes au deck de l'IA (ajoute au deck existant)
     async setOpponentDeck(count = 5) {
-        console.log(`🔄 Ajout de ${count} cartes au deck IA (deck actuel: ${this.opponentDeck.length} cartes)`);
         
         try {
             const opponentCards = await apiService.getRandomCards(count);
@@ -325,12 +283,9 @@ class BattleService {
             // Ajouter les nouvelles cartes au deck existant (pas de remplacement)
             this.opponentDeck.push(...newCards);
             
-            console.log(`✅ ${newCards.length} cartes ajoutées au deck IA (total: ${this.opponentDeck.length} cartes)`);
         } catch (error) {
-            console.error('❌ Erreur lors de l\'ajout de cartes au deck IA:', error);
             const offlineCards = this.generateOfflineOpponentCards(count);
             this.opponentDeck.push(...offlineCards);
-            console.log(`✅ ${offlineCards.length} cartes factices ajoutées au deck IA (total: ${this.opponentDeck.length} cartes)`);
         }
         
         // Vérifier si la main doit être complétée automatiquement après l'ajout de cartes au deck
@@ -363,22 +318,17 @@ class BattleService {
 
     // Complète la main de l'IA avec des cartes du deck jusqu'à 5 cartes (appelé lors du tirage manuel ET automatiquement)
     fillOpponentHandFromDeck() {
-        console.log(`🔄 Complétion main IA: ${this.opponentHand.length}/5 cartes, deck: ${this.opponentDeck.length} cartes`);
         
         while (this.opponentHand.length < 5 && this.opponentDeck.length > 0) {
             const card = this.opponentDeck.shift();
             this.opponentHand.push(card);
-            console.log(`✅ Carte ${card.name} transférée du deck vers la main IA`);
         }
         
-        console.log(`✅ Main IA complétée: ${this.opponentHand.length}/5 cartes, deck restant: ${this.opponentDeck.length} cartes`);
-        this.saveBattleState();
     }
 
     // Vérifie et complète automatiquement la main de l'IA si nécessaire
     checkAndFillOpponentHand() {
         if (this.opponentHand.length < 5 && this.opponentDeck.length > 0) {
-            console.log(`🔄 Vérification automatique: main IA ${this.opponentHand.length}/5, deck ${this.opponentDeck.length} cartes`);
             this.fillOpponentHandFromDeck();
         }
     }
@@ -429,7 +379,6 @@ class BattleService {
 
     // Réinitialiser complètement l'état du combat
     resetBattleState() {
-        console.log('🔄 Réinitialisation complète de l\'état du combat...');
         
         // Réinitialiser toutes les propriétés du combat
         this.opponentHand = [];
@@ -450,7 +399,6 @@ class BattleService {
         storageService.removePartialData('battleState');
         gameStateService.saveBattleState(null);
         
-        console.log('✅ État du combat réinitialisé avec succès');
     }
 }
 

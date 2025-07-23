@@ -36,7 +36,6 @@ class GameStateService {
             this.state.draws = data.draws || 0;
             this.state.battleState = data.battleState || null; // Charger l'état du combat
             
-            console.log('✅ Données chargées depuis le LocalStorage');
             return true;
         } catch (error) {
             console.error('❌ Erreur lors du chargement des données:', error);
@@ -64,7 +63,6 @@ class GameStateService {
             
             const success = storageService.saveGameData(data);
             if (success) {
-                console.log('✅ Données sauvegardées dans le LocalStorage');
                 return true;
             } else {
                 console.error('❌ Échec de la sauvegarde des données');
@@ -239,9 +237,6 @@ class GameStateService {
     
     // Charger l'état du combat
     loadBattleState() {
-        console.log('=== CHARGEMENT ÉTAT COMBAT GAME STATE ===');
-        console.log('État de combat dans gameState:', this.state.battleState);
-        console.log('=== FIN CHARGEMENT ÉTAT COMBAT GAME STATE ===');
         return this.state.battleState || null;
     }
 }

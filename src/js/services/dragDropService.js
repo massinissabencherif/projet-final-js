@@ -5,11 +5,11 @@ class DragDropService {
         this.draggedElement = null;
         this.dropZones = new Map();
         this.isDragging = false;
+        this.zoneListeners = new Map(); // Map pour stocker les handlers par zone
     }
 
     // Initialiser le service de drag & drop
     init() {
-        console.log('Initialisation du service de drag & drop...');
         this.setupDropZones();
         this.setupGlobalEvents();
     }
@@ -18,6 +18,7 @@ class DragDropService {
     setupDropZones() {
         const deckContainer = document.getElementById('deck-container');
         const handContainer = document.getElementById('hand-container');
+        const collectionGrid = document.getElementById('collection-grid');
 
         if (deckContainer) {
             this.setupDropZone(deckContainer, 'deck');
@@ -25,7 +26,9 @@ class DragDropService {
         if (handContainer) {
             this.setupDropZone(handContainer, 'hand');
         }
-        
+        if (collectionGrid) {
+            this.setupDropZone(collectionGrid, 'collection');
+        }
         // Configurer les zones de drop de l'arène de combat
         this.setupArenaDropZones();
     }
@@ -72,13 +75,24 @@ class DragDropService {
     setupDropZone(container, zoneType) {
         this.dropZones.set(zoneType, container);
 
-        // Événements pour la zone de drop
-        container.addEventListener('dragover', (e) => this.handleDragOver(e, zoneType));
-        container.addEventListener('drop', (e) => this.handleDrop(e, zoneType));
-        container.addEventListener('dragenter', (e) => this.handleDragEnter(e, zoneType));
-        container.addEventListener('dragleave', (e) => this.handleDragLeave(e, zoneType));
-
-        console.log(`Zone de drop configurée: ${zoneType}`);
+        // Nettoyer les anciens listeners si présents
+        if (this.zoneListeners.has(zoneType)) {
+            const old = this.zoneListeners.get(zoneType);
+            container.removeEventListener('dragover', old.dragover);
+            container.removeEventListener('drop', old.drop);
+            container.removeEventListener('dragenter', old.dragenter);
+            container.removeEventListener('dragleave', old.dragleave);
+        }
+        // Créer de nouveaux handlers liés à la zone
+        const dragover = (e) => this.handleDragOver(e, zoneType);
+        const drop = (e) => this.handleDrop(e, zoneType);
+        const dragenter = (e) => this.handleDragEnter(e, zoneType);
+        const dragleave = (e) => this.handleDragLeave(e, zoneType);
+        container.addEventListener('dragover', dragover);
+        container.addEventListener('drop', drop);
+        container.addEventListener('dragenter', dragenter);
+        container.addEventListener('dragleave', dragleave);
+        this.zoneListeners.set(zoneType, { dragover, drop, dragenter, dragleave });
     }
 
     // Configurer les événements globaux
@@ -104,13 +118,10 @@ class DragDropService {
         // Événements de drag pour la carte
         cardElement.addEventListener('dragstart', (e) => this.handleDragStart(e, cardData, location, index));
         cardElement.addEventListener('dragend', (e) => this.handleDragEnd(e));
-
-        console.log(`Carte configurée pour le drag: ${cardData.name} (${location})`);
     }
 
     // Gérer le début du drag
     handleDragStart(e, cardData, location, index) {
-        console.log(`Début du drag: ${cardData.name} depuis ${location}`);
         
         this.draggedCard = cardData;
         this.draggedElement = e.target;
@@ -162,7 +173,6 @@ class DragDropService {
     // Gérer le drop
     handleDrop(e, zoneType) {
         e.preventDefault();
-        console.log(`Drop dans la zone: ${zoneType}`);
 
         const container = this.dropZones.get(zoneType);
         if (container) {
@@ -170,22 +180,19 @@ class DragDropService {
         }
 
         if (!this.isValidDrop(zoneType)) {
-            console.log('Drop invalide');
             return;
         }
 
         try {
             const dragData = JSON.parse(e.dataTransfer.getData('text/plain'));
-            console.log('Données de drag reçues:', dragData);
             this.moveCard(dragData.location, zoneType, dragData.index);
         } catch (error) {
-            console.error('Erreur lors du drop:', error);
+            // Suppression totale des appels console
         }
     }
 
     // Gérer la fin du drag
     handleDragEnd(e) {
-        console.log('Fin du drag');
         
         this.isDragging = false;
         this.draggedCard = null;
@@ -206,13 +213,13 @@ class DragDropService {
     // Vérifier si un drop est valide
     isValidDrop(targetZone) {
         if (!this.draggedCard) return false;
-
-        // Règles de validation
         const sourceLocation = this.draggedElement?.dataset.location;
-        
-        // On ne peut pas déposer dans la même zone
         if (sourceLocation === targetZone) return false;
-
+        // Collection <-> main/pioche
+        if ((sourceLocation === 'collection' && (targetZone === 'hand' || targetZone === 'deck')) ||
+            ((sourceLocation === 'hand' || sourceLocation === 'deck') && targetZone === 'collection')) {
+            return true;
+        }
         // Règles pour le mode normal (pioche ↔ main)
         if ((sourceLocation === 'deck' && targetZone === 'hand') ||
             (sourceLocation === 'hand' && targetZone === 'deck')) {
@@ -261,8 +268,72 @@ class DragDropService {
 
     // Déplacer une carte
     moveCard(fromLocation, toLocation, cardIndex) {
-        console.log(`Déplacement de carte: ${fromLocation} -> ${toLocation} (index: ${cardIndex})`);
-
+        // Gestion collection <-> main/pioche
+        if (fromLocation === 'collection' && (toLocation === 'hand' || toLocation === 'deck')) {
+            // Retirer de la collection, ajouter à la main/pioche
+            const cardService = window.cardService;
+            const gameStateService = window.gameStateService;
+            const card = this.draggedCard;
+            if (!cardService || !gameStateService) return;
+            // Retirer de la collection
+            let collection = cardService.getCollection();
+            const idx = collection.findIndex(c => c.id === card.id);
+            if (idx !== -1) {
+                collection.splice(idx, 1);
+                cardService.saveCollection();
+            }
+            // Ajouter à la main/pioche
+            if (toLocation === 'hand') {
+                let hand = gameStateService.getHand();
+                if (!hand.some(c => c.id === card.id) && hand.length < 5) {
+                    hand.push(card);
+                    gameStateService.saveGameData();
+                }
+            } else if (toLocation === 'deck') {
+                let deck = gameStateService.getDeck();
+                if (!deck.some(c => c.id === card.id)) {
+                    deck.push(card);
+                    gameStateService.saveGameData();
+                }
+            }
+            document.dispatchEvent(new CustomEvent('cardMoved', {
+                detail: { fromLocation, toLocation, cardIndex, cardData: card }
+            }));
+            return;
+        }
+        if ((fromLocation === 'hand' || fromLocation === 'deck') && toLocation === 'collection') {
+            // Retirer de la main/pioche, ajouter à la collection
+            const cardService = window.cardService;
+            const gameStateService = window.gameStateService;
+            const card = this.draggedCard;
+            if (!cardService || !gameStateService) return;
+            // Ajouter à la collection
+            let collection = cardService.getCollection();
+            if (!collection.some(c => c.id === card.id)) {
+                collection.push(card);
+                cardService.saveCollection();
+            }
+            // Retirer de la main/pioche
+            if (fromLocation === 'hand') {
+                let hand = gameStateService.getHand();
+                const idx = hand.findIndex(c => c.id === card.id);
+                if (idx !== -1) {
+                    hand.splice(idx, 1);
+                    gameStateService.saveGameData();
+                }
+            } else if (fromLocation === 'deck') {
+                let deck = gameStateService.getDeck();
+                const idx = deck.findIndex(c => c.id === card.id);
+                if (idx !== -1) {
+                    deck.splice(idx, 1);
+                    gameStateService.saveGameData();
+                }
+            }
+            document.dispatchEvent(new CustomEvent('cardMoved', {
+                detail: { fromLocation, toLocation, cardIndex, cardData: card }
+            }));
+            return;
+        }
         // Émettre un événement personnalisé pour notifier l'application
         const moveEvent = new CustomEvent('cardMoved', {
             detail: {
@@ -272,7 +343,6 @@ class DragDropService {
                 cardData: this.draggedCard
             }
         });
-
         document.dispatchEvent(moveEvent);
     }
 
@@ -287,6 +357,7 @@ class DragDropService {
         this.draggedCard = null;
         this.draggedElement = null;
         this.isDragging = false;
+        this.zoneListeners.clear(); // Nettoyer les listeners
     }
 }
 

@@ -18,7 +18,6 @@ class ApiService {
         }
 
         try {
-            console.log('Chargement des cartes depuis le fichier local...');
             // Charger le fichier JSON local
             const response = await fetch('./data.json'); // Utilise directement data.json
             if (!response.ok) {
@@ -28,10 +27,8 @@ class ApiService {
             const data = await response.json();
             this.localCards = data.data || data; // Supporte les deux formats possibles
             
-            console.log(`✅ ${this.localCards.length} cartes chargées depuis le fichier local`);
             return this.localCards;
         } catch (error) {
-            console.warn('⚠️ Impossible de charger le fichier local, utilisation du mode hors ligne:', error);
             return [];
         }
     }
@@ -43,7 +40,6 @@ class ApiService {
                 // Mode local : utiliser le fichier JSON
                 const cards = await this.loadLocalCards();
                 if (cards.length === 0) {
-                    console.warn('⚠️ Aucune carte locale disponible, utilisation du mode hors ligne');
                     return this.generateOfflineCards(count);
                 }
                 
@@ -51,14 +47,12 @@ class ApiService {
                 const randomCards = this.shuffleArray(cards).slice(0, count);
                 // Formater les cartes pour notre application
                 const formattedCards = randomCards.map(card => this.formatCard(card));
-                console.log(`${formattedCards.length} cartes récupérées depuis le fichier local`);
                 return formattedCards;
             } else {
                 // Mode API externe (ancien code)
                 return this.getRandomCardsFromAPI(count);
             }
         } catch (error) {
-            console.warn('⚠️ Erreur lors de la récupération des cartes, utilisation du mode hors ligne');
             return this.generateOfflineCards(count);
         }
     }
@@ -80,7 +74,6 @@ class ApiService {
                 try {
                     cards = JSON.parse(cachedCards);
                     useCache = true;
-                    console.log('✅ Utilisation du cache local pour les cartes Pokémon');
                 } catch (e) {
                     // Si le cache est corrompu, on l'ignore
                     cards = [];
@@ -89,7 +82,6 @@ class ApiService {
 
             // Si pas de cache ou cache expiré, on va chercher les cartes à l'API
             if (!useCache || cards.length === 0) {
-                console.log('Récupération de 250 cartes depuis l\'API...');
                 try {
                     const response = await fetch(`${this.baseUrl}/cards?pageSize=250&select=id,name,types,hp,images,supertype`, {
                         headers: this.headers
@@ -102,9 +94,7 @@ class ApiService {
                     // Mettre à jour le cache
                     localStorage.setItem(cacheKey, JSON.stringify(cards));
                     localStorage.setItem(cacheTimestampKey, now.toString());
-                    console.log('✅ Cache local mis à jour avec les cartes Pokémon');
                 } catch (apiError) {
-                    console.warn('⚠️ Impossible de récupérer les cartes depuis l\'API, utilisation du mode hors ligne');
                     // Retourner des cartes factices sans lever d'erreur
                     return this.generateOfflineCards(count);
                 }
@@ -114,10 +104,8 @@ class ApiService {
             const randomCards = this.shuffleArray(cards).slice(0, count);
             // Formater les cartes pour notre application
             const formattedCards = randomCards.map(card => this.formatCard(card));
-            console.log(`${formattedCards.length} cartes récupérées (cache: ${useCache})`);
             return formattedCards;
         } catch (error) {
-            console.warn('⚠️ Erreur lors de la récupération des cartes, utilisation du mode hors ligne');
             return this.generateOfflineCards(count);
         }
     }
@@ -135,14 +123,12 @@ class ApiService {
                 }
                 
                 const formattedCard = this.formatCard(card);
-                console.log(`Carte ${cardId} récupérée depuis le fichier local`);
                 return formattedCard;
             } else {
                 // Mode API externe (ancien code)
                 return this.getCardByIdFromAPI(cardId);
             }
         } catch (error) {
-            console.error('Erreur lors de la récupération de la carte:', error);
             throw error;
         }
     }
@@ -150,7 +136,6 @@ class ApiService {
     // Ancienne méthode pour l'API externe
     async getCardByIdFromAPI(cardId) {
         try {
-            console.log(`Récupération de la carte ${cardId}...`);
             
             const response = await fetch(`${this.baseUrl}/cards/${cardId}`, {
                 headers: this.headers
@@ -168,11 +153,9 @@ class ApiService {
             }
 
             const formattedCard = this.formatCard(card);
-            console.log(`Carte ${cardId} récupérée avec succès`);
             return formattedCard;
 
         } catch (error) {
-            console.error('Erreur lors de la récupération de la carte:', error);
             throw error;
         }
     }
@@ -189,14 +172,12 @@ class ApiService {
                 ).slice(0, limit);
                 
                 const formattedCards = filteredCards.map(card => this.formatCard(card));
-                console.log(`${formattedCards.length} cartes trouvées pour "${query}" dans le fichier local`);
                 return formattedCards;
             } else {
                 // Mode API externe (ancien code)
                 return this.searchCardsFromAPI(query, limit);
             }
         } catch (error) {
-            console.error('Erreur lors de la recherche de cartes:', error);
             throw error;
         }
     }
@@ -204,7 +185,6 @@ class ApiService {
     // Ancienne méthode pour l'API externe
     async searchCardsFromAPI(query, limit = 10) {
         try {
-            console.log(`Recherche de cartes avec la requête: ${query}`);
             
             const response = await fetch(`${this.baseUrl}/cards?q=name:${encodeURIComponent(query)}&pageSize=${limit}`, {
                 headers: this.headers
@@ -218,11 +198,9 @@ class ApiService {
             const cards = data.data || [];
 
             const formattedCards = cards.map(card => this.formatCard(card));
-            console.log(`${formattedCards.length} cartes trouvées pour "${query}"`);
             return formattedCards;
 
         } catch (error) {
-            console.error('Erreur lors de la recherche de cartes:', error);
             throw error;
         }
     }
@@ -230,7 +208,6 @@ class ApiService {
     // Basculer entre mode local et mode API
     setLocalMode(enabled) {
         this.useLocalMode = enabled;
-        console.log(`Mode ${enabled ? 'local' : 'API externe'} activé`);
     }
 
     // Formater une carte pour notre application
@@ -268,14 +245,11 @@ class ApiService {
             });
             
             if (response.ok) {
-                console.log('✅ Connexion à l\'API Pokémon TCG réussie');
                 return true;
             } else {
-                console.warn('⚠️ Erreur de connexion à l\'API:', response.status);
                 return false;
             }
         } catch (error) {
-            console.warn('⚠️ Impossible de se connecter à l\'API, mode hors ligne activé');
             return false;
         }
     }

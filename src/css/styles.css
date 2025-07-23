@@ -7,9 +7,8 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background: 
-        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-        linear-gradient(135deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #533483 75%, #e94560 100%);
+    background: url('../assets/background.png') no-repeat center center fixed;
+    background-size: cover;
     min-height: 100vh;
     color: #333;
     position: relative;
@@ -1534,6 +1533,22 @@ button:focus {
     content: 'Pokémon Actif';
     color: rgba(231, 76, 60, 0.7);
     font-size: 0.9rem;
+}
+
+.empty-collection-bg {
+    position: relative;
+    min-height: 120px;
+}
+.empty-collection-bg::before {
+    content: 'Votre collection est vide. Glissez une carte ici pour commencer !';
+    color: #888;
+    font-size: 16px;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    text-align: center;
 }
 
 

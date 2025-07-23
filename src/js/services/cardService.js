@@ -17,6 +17,7 @@ class CardService {
             'Colorless': '#f8f9fa',
             'Normal': '#f8f9fa'
         };
+        this.collection = this.loadCollection();
     }
 
     // Créer un élément de carte
@@ -220,6 +221,35 @@ class CardService {
             totalPower: attack + hp,
             averageStats: Math.round((attack + defense + hp) / 3)
         };
+    }
+
+    // Ajoute des cartes à la collection (en évitant les doublons exacts)
+    addCardsToCollection(cards) {
+        if (!Array.isArray(cards)) return;
+        let added = 0;
+        for (const card of cards) {
+            // On considère qu'une carte est unique par son id
+            if (!this.collection.some(c => c.id === card.id)) {
+                this.collection.push(card);
+                added++;
+            }
+        }
+        this.saveCollection();
+        return added;
+    }
+
+    // Récupère la collection complète
+    getCollection() {
+        return this.collection;
+    }
+
+    // Persistance
+    saveCollection() {
+        localStorage.setItem('pokemon_collection', JSON.stringify(this.collection));
+    }
+    loadCollection() {
+        const data = localStorage.getItem('pokemon_collection');
+        return data ? JSON.parse(data) : [];
     }
 }
 

@@ -9,6 +9,12 @@
 <body>
     <header>
         <h1>Pokémon TCG</h1>
+        <div class="main-actions" style="display:flex;gap:16px;justify-content:center;margin:20px 0;">
+            <button id="booster-button" class="main-btn">Ouvrir un booster (5 cartes)</button>
+            <!-- Les autres boutons principaux sont ici, par exemple : -->
+            <button id="draw-button" class="main-btn">Tirer 5 cartes</button>
+            <button id="battle-button" class="main-btn">Lancer un combat</button>
+        </div>
         <div class="player-info">
             <span>Joueur: <span id="player-name">Dresseur</span></span>
             <span>Cartes en main: <span id="hand-count">0</span></span>
@@ -37,6 +43,13 @@
                 <h3>Main</h3>
                 <div id="hand-container" class="cards-container"></div>
             </div>
+        </section>
+
+        <!-- Section Collection -->
+        <section id="collection-section" style="margin: 32px auto; max-width: 900px; background: rgba(255,255,255,0.85); border-radius: 12px; padding: 24px;">
+            <h2 style="text-align:center;">Votre collection</h2>
+            <div id="collection-count" style="text-align:center; margin-bottom: 12px;"></div>
+            <div id="collection-grid" style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;"></div>
         </section>
 
         <!-- Section de combat (cachée par défaut) -->

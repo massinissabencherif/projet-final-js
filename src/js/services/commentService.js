@@ -10,7 +10,6 @@ class CommentService {
         try {
             return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
         } catch (error) {
-            console.error('Erreur lors de la récupération des commentaires:', error);
             return [];
         }
     }
@@ -31,10 +30,8 @@ class CommentService {
             const limitedComments = comments.slice(0, this.maxComments);
             
             localStorage.setItem(this.storageKey, JSON.stringify(limitedComments));
-            console.log('Commentaire sauvegardé avec succès');
             return true;
         } catch (error) {
-            console.error('Erreur lors de la sauvegarde du commentaire:', error);
             return false;
         }
     }
@@ -46,12 +43,10 @@ class CommentService {
             if (index >= 0 && index < comments.length) {
                 comments.splice(index, 1);
                 localStorage.setItem(this.storageKey, JSON.stringify(comments));
-                console.log('Commentaire supprimé avec succès');
                 return true;
             }
             return false;
         } catch (error) {
-            console.error('Erreur lors de la suppression du commentaire:', error);
             return false;
         }
     }
@@ -60,10 +55,8 @@ class CommentService {
     clearAllComments() {
         try {
             localStorage.removeItem(this.storageKey);
-            console.log('Tous les commentaires ont été supprimés');
             return true;
         } catch (error) {
-            console.error('Erreur lors de la suppression des commentaires:', error);
             return false;
         }
     }
