@@ -307,11 +307,16 @@ class DragDropService {
             const gameStateService = window.gameStateService;
             const card = this.draggedCard;
             if (!cardService || !gameStateService) return;
-            // Ajouter à la collection
+            // Ajouter à la collection (autoriser plusieurs cartes avec le même nom mais id différent)
             let collection = cardService.getCollection();
-            if (!collection.some(c => c.id === card.id)) {
-                collection.push(card);
-                cardService.saveCollection();
+            collection.push(card);
+            cardService.saveCollection();
+            // Log temporaire pour debug
+            if (typeof window !== 'undefined') {
+                window._debug_collection = collection;
+                if (window._debug_collection) {
+                    console.log('Collection après drop vers collection:', window._debug_collection.map(c => c.name));
+                }
             }
             // Retirer de la main/pioche
             if (fromLocation === 'hand') {
@@ -329,6 +334,7 @@ class DragDropService {
                     gameStateService.saveGameData();
                 }
             }
+            // Toujours déclencher cardMoved pour forcer le re-render (badge)
             document.dispatchEvent(new CustomEvent('cardMoved', {
                 detail: { fromLocation, toLocation, cardIndex, cardData: card }
             }));

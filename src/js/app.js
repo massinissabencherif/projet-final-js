@@ -232,30 +232,98 @@ function renderCollectionUI() {
     const grid = document.getElementById('collection-grid');
     const count = document.getElementById('collection-count');
     if (!grid || !count) return;
+    // Ajout ou récupération de la barre de recherche
+    let searchBar = document.getElementById('collection-search-bar');
+    if (!searchBar) {
+        searchBar = document.createElement('input');
+        searchBar.type = 'text';
+        searchBar.id = 'collection-search-bar';
+        searchBar.placeholder = 'Rechercher une carte...';
+        searchBar.style = 'display:block;margin:0 auto 8px auto;padding:8px;width:220px;border-radius:6px;border:1px solid #ccc;';
+        grid.parentElement.insertBefore(searchBar, grid);
+        searchBar.addEventListener('input', () => renderCollectionUI());
+    }
+    // Ajout ou récupération du menu de tri
+    let sortMenu = document.getElementById('collection-sort-menu');
+    if (!sortMenu) {
+        sortMenu = document.createElement('select');
+        sortMenu.id = 'collection-sort-menu';
+        sortMenu.style = 'display:block;margin:0 auto 16px auto;padding:6px;width:160px;border-radius:6px;border:1px solid #ccc;';
+        sortMenu.innerHTML = `
+            <option value="az">Trier A → Z</option>
+            <option value="za">Trier Z → A</option>
+        `;
+        grid.parentElement.insertBefore(sortMenu, grid);
+        sortMenu.addEventListener('change', () => renderCollectionUI());
+    }
+    const searchValue = searchBar.value.trim().toLowerCase();
+    const sortValue = sortMenu.value;
     const collection = cardService.getCollection();
     grid.innerHTML = '';
     grid.classList.remove('empty-collection-bg');
-    if (collection.length === 0) {
+    let filtered = collection;
+    if (searchValue) {
+        filtered = collection.filter(card => card.name.toLowerCase().includes(searchValue));
+    }
+    // Tri alphabétique
+    filtered = filtered.slice(); // clone
+    filtered.sort((a, b) => {
+        if (sortValue === 'az') {
+            return a.name.localeCompare(b.name);
+        } else {
+            return b.name.localeCompare(a.name);
+        }
+    });
+    // Calcul des quantités par nom
+    const nameCount = {};
+    for (const card of collection) {
+        nameCount[card.name] = (nameCount[card.name] || 0) + 1;
+    }
+    if (filtered.length === 0) {
         grid.classList.add('empty-collection-bg');
         count.textContent = '';
     } else {
-        const unique = new Set(collection.map(c => c.id)).size;
-        count.textContent = `${collection.length} cartes (${unique} uniques)`;
-        collection.forEach((card, index) => {
+        const unique = new Set(filtered.map(c => c.id)).size;
+        count.textContent = `${filtered.length} cartes (${unique} uniques)`;
+        filtered.forEach((card, index) => {
             const cardDiv = document.createElement('div');
             cardDiv.className = 'collection-card';
-            cardDiv.style = 'border:1px solid #ccc;border-radius:8px;padding:8px;width:110px;background:#fff;box-shadow:0 2px 6px #0001;text-align:center;cursor:pointer;';
+            cardDiv.style = 'border:1px solid #ccc;border-radius:8px;padding:8px;width:110px;background:#fff;box-shadow:0 2px 6px #0001;text-align:center;cursor:pointer;position:relative;';
             if (card.imageUrl) {
                 cardDiv.innerHTML = `<img src="${card.imageUrl}" alt="${card.name}" style="width:90px;height:120px;object-fit:cover;border-radius:6px;">`;
             } else {
                 cardDiv.innerHTML = `<div style='width:90px;height:120px;display:flex;align-items:center;justify-content:center;background:#eee;border-radius:6px;color:#aaa;font-size:12px;'>Pas d'image</div>`;
             }
             cardDiv.innerHTML += `<div style='margin-top:6px;font-weight:bold;'>${card.name}</div><div style='font-size:12px;color:#666;'>${card.type || (card.types ? card.types.join(', ') : '')}</div>`;
+            // Badge de quantité si doublon
+            if (nameCount[card.name] > 1) {
+                const badge = document.createElement('div');
+                badge.textContent = `x${nameCount[card.name]}`;
+                badge.style = 'position:absolute;top:4px;right:8px;background:#ffb703;color:#222;font-weight:bold;padding:2px 7px;border-radius:12px;font-size:13px;box-shadow:0 1px 4px #0002;z-index:2;';
+                cardDiv.appendChild(badge);
+            }
+            // Bouton Ajouter au deck
+            const deck = gameStateService.getDeck();
+            const inDeck = deck.some(c => c.id === card.id);
+            const deckFull = deck.length >= 30;
+            const addBtn = document.createElement('button');
+            addBtn.textContent = inDeck ? 'Déjà dans le deck' : deckFull ? 'Deck plein' : 'Ajouter au deck';
+            addBtn.disabled = inDeck || deckFull;
+            addBtn.style = 'margin-top:6px;padding:4px 8px;font-size:13px;border-radius:6px;border:1px solid #bbb;background:#e0e0e0;cursor:pointer;width:90px;';
+            addBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!inDeck && !deckFull) {
+                    deck.push(card);
+                    gameStateService.saveGameData();
+                    renderCollectionUI();
+                    if (window.gameController && typeof window.gameController.updateUI === 'function') window.gameController.updateUI();
+                }
+            });
+            cardDiv.appendChild(addBtn);
             cardDiv.addEventListener('click', (e) => {
                 e.stopPropagation();
                 cardService.showCardDetails(card);
             });
-            // Utilise le drag&drop global
             dragDropService.setupCardDrag(cardDiv, card, 'collection', index);
             grid.appendChild(cardDiv);
         });

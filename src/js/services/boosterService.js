@@ -5,7 +5,7 @@ import { cardService } from './cardService.js';
 
 class BoosterService {
     constructor() {
-        this.COOLDOWN = 5 * 60 * 1000; // 5 minutes en ms
+        this.COOLDOWN = 5 * 1000; // 5 secondes en ms pour les tests
         this.lastDrawTime = this.loadLastDrawTime();
     }
 
