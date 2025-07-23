@@ -169,6 +169,54 @@ function setupBoosterButton() {
     updateBoosterBtn();
 }
 
+// Ajout du bouton Mélanger le deck dans l'UI
+function setupShuffleDeckButton() {
+    const deckZone = document.querySelector('.deck-zone');
+    if (!deckZone) return;
+    let shuffleBtn = document.getElementById('shuffle-deck-btn');
+    if (!shuffleBtn) {
+        shuffleBtn = document.createElement('button');
+        shuffleBtn.id = 'shuffle-deck-btn';
+        shuffleBtn.textContent = 'Mélanger le deck';
+        shuffleBtn.style = 'display:block;margin:0 auto 12px auto;padding:8px 18px;font-size:15px;border-radius:8px;border:1px solid #bbb;background:#e0e0e0;cursor:pointer;font-weight:bold;';
+        deckZone.insertBefore(shuffleBtn, deckZone.querySelector('h3').nextSibling);
+        shuffleBtn.addEventListener('click', () => {
+            window.gameStateService.shuffleDeck();
+            if (window.gameController && typeof window.gameController.updateUI === 'function') window.gameController.updateUI();
+        });
+    }
+}
+
+// Ajout du bouton Vider le deck dans l'UI
+function setupClearDeckButton() {
+    const deckZone = document.querySelector('.deck-zone');
+    if (!deckZone) return;
+    let clearBtn = document.getElementById('clear-deck-btn');
+    if (!clearBtn) {
+        clearBtn = document.createElement('button');
+        clearBtn.id = 'clear-deck-btn';
+        clearBtn.textContent = 'Vider le deck';
+        clearBtn.style = 'display:block;margin:0 auto 8px auto;padding:8px 18px;font-size:15px;border-radius:8px;border:1px solid #e57373;background:#ffcdd2;color:#b71c1c;cursor:pointer;font-weight:bold;';
+        deckZone.insertBefore(clearBtn, deckZone.querySelector('h3').nextSibling);
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Voulez-vous vraiment vider tout le deck et la main ? Les cartes seront remises dans la collection.')) {
+                const cardsToReturn = window.gameStateService.clearDeckAndHand();
+                if (cardsToReturn && cardsToReturn.length > 0) {
+                    const cardService = window.cardService;
+                    if (cardService) {
+                        for (const card of cardsToReturn) {
+                            cardService.collection.push(card);
+                        }
+                        cardService.saveCollection();
+                    }
+                }
+                if (window.gameController && typeof window.gameController.updateUI === 'function') window.gameController.updateUI();
+                renderCollectionUI();
+            }
+        });
+    }
+}
+
 // Ajoute le drag&drop natif sur les cartes de la main et de la pioche
 function enableHandAndDeckDragDrop() {
     // Main
@@ -209,6 +257,7 @@ function enableHandAndDeckDragDrop() {
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
     setupBoosterButton();
+    setupClearDeckButton();
     // Appeler renderCollectionUI au chargement initial
     renderCollectionUI();
     // Appeler enableHandAndDeckDragDrop après chaque updateUI
@@ -304,8 +353,10 @@ function renderCollectionUI() {
             }
             // Bouton Ajouter au deck
             const deck = gameStateService.getDeck();
+            const hand = gameStateService.getHand();
             const inDeck = deck.some(c => c.id === card.id);
-            const deckFull = deck.length >= 30;
+            const totalPlayable = deck.length + hand.length;
+            const deckFull = totalPlayable >= 30;
             const addBtn = document.createElement('button');
             addBtn.textContent = inDeck ? 'Déjà dans le deck' : deckFull ? 'Deck plein' : 'Ajouter au deck';
             addBtn.disabled = inDeck || deckFull;
@@ -313,10 +364,11 @@ function renderCollectionUI() {
             addBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (!inDeck && !deckFull) {
-                    deck.push(card);
-                    gameStateService.saveGameData();
-                    renderCollectionUI();
-                    if (window.gameController && typeof window.gameController.updateUI === 'function') window.gameController.updateUI();
+                    const added = gameStateService.addCardsToDeck([card]);
+                    if (added) {
+                        renderCollectionUI();
+                        if (window.gameController && typeof window.gameController.updateUI === 'function') window.gameController.updateUI();
+                    }
                 }
             });
             cardDiv.appendChild(addBtn);

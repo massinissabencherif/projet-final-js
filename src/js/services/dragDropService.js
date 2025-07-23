@@ -279,21 +279,27 @@ class DragDropService {
             let collection = cardService.getCollection();
             const idx = collection.findIndex(c => c.id === card.id);
             if (idx !== -1) {
-                collection.splice(idx, 1);
-                cardService.saveCollection();
-            }
-            // Ajouter à la main/pioche
-            if (toLocation === 'hand') {
-                let hand = gameStateService.getHand();
-                if (!hand.some(c => c.id === card.id) && hand.length < 5) {
-                    hand.push(card);
-                    gameStateService.saveGameData();
-                }
-            } else if (toLocation === 'deck') {
-                let deck = gameStateService.getDeck();
-                if (!deck.some(c => c.id === card.id)) {
-                    deck.push(card);
-                    gameStateService.saveGameData();
+                // Pour la pioche, vérifier la limite globale via addCardsToDeck
+                if (toLocation === 'deck') {
+                    const added = gameStateService.addCardsToDeck([card]);
+                    if (!added) {
+                        // Limite atteinte, on ne retire pas la carte de la collection
+                        return;
+                    }
+                    // Si ajout réussi, retirer de la collection
+                    collection.splice(idx, 1);
+                    cardService.saveCollection();
+                } else if (toLocation === 'hand') {
+                    let hand = gameStateService.getHand();
+                    if (!hand.some(c => c.id === card.id) && hand.length < 5 && gameStateService.getTotalPlayableCards() < 30) {
+                        hand.push(card);
+                        gameStateService.saveGameData();
+                        collection.splice(idx, 1);
+                        cardService.saveCollection();
+                    } else {
+                        // Limite main ou globale atteinte, on ne retire pas la carte de la collection
+                        return;
+                    }
                 }
             }
             document.dispatchEvent(new CustomEvent('cardMoved', {

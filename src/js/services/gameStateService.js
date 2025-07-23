@@ -108,31 +108,47 @@ class GameStateService {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 
+    // Obtenir le nombre total de cartes jouables (deck + main)
+    getTotalPlayableCards() {
+        return this.state.deck.length + this.state.hand.length;
+    }
+
     // Ajouter des cartes à la pioche
     addCardsToDeck(cards) {
+        // Limite stricte à 30 cartes (deck + main)
+        if (this.getTotalPlayableCards() + cards.length > 30) {
+            return false;
+        }
         this.state.deck.push(...cards);
         this.state.lastDrawTime = Date.now();
         this.state.totalCardsDrawn += cards.length;
         this.saveGameData();
+        return true;
     }
 
     // Déplacer une carte entre la pioche et la main
     moveCard(fromLocation, toLocation, cardId) {
         const sourceArray = fromLocation === 'deck' ? this.state.deck : this.state.hand;
         const targetArray = toLocation === 'deck' ? this.state.deck : this.state.hand;
-        
         const cardIdx = sourceArray.findIndex(c => c.id === cardId);
         if (cardIdx === -1) return false;
-        
-        const card = sourceArray.splice(cardIdx, 1)[0];
-        
-        // Gestion de la limite de 5 cartes en main
+        const card = sourceArray[cardIdx];
+        // Autoriser le déplacement main <-> pioche même si deck + main == 30
+        const isInternalMove = (fromLocation === 'deck' && toLocation === 'hand') || (fromLocation === 'hand' && toLocation === 'deck');
+        if (!isInternalMove && toLocation === 'deck' && this.getTotalPlayableCards() >= 30) {
+            return false;
+        }
         if (toLocation === 'hand' && this.state.hand.length >= 5) {
             // Rotation : la première carte va à la pioche
             const rotatedCard = this.state.hand.shift();
+            // Avant de remettre dans le deck, vérifier la limite globale
+            if (!isInternalMove && this.getTotalPlayableCards() >= 30) {
+                this.state.hand.unshift(rotatedCard);
+                return false;
+            }
             this.state.deck.push(rotatedCard);
         }
-        
+        sourceArray.splice(cardIdx, 1);
         targetArray.push(card);
         this.saveGameData();
         return true;
@@ -147,6 +163,15 @@ class GameStateService {
             return firstCard;
         }
         return null;
+    }
+
+    // Mélanger la pioche (deck) de façon aléatoire
+    shuffleDeck() {
+        for (let i = this.state.deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.state.deck[i], this.state.deck[j]] = [this.state.deck[j], this.state.deck[i]];
+        }
+        this.saveGameData();
     }
 
     // Mettre à jour les scores de combat
@@ -183,6 +208,15 @@ class GameStateService {
         this.state.discard = []; // Vider aussi la défausse
         this.state.lastDrawTime = null;
         this.saveGameData();
+    }
+
+    // Vider le deck et la main, remettre toutes les cartes dans la collection
+    clearDeckAndHand() {
+        const allCards = [...this.state.deck, ...this.state.hand];
+        this.state.deck = [];
+        this.state.hand = [];
+        this.saveGameData();
+        return allCards;
     }
 
     // Obtenir les statistiques du jeu

@@ -29,3 +29,49 @@ Restauration complète de l’état à l’ouverture de l’application
 6. Modal de détail de carte réutilisable
 Branche : feature/card-detail-modal
 Modal réutilisable pour afficher les détails d’une carte depuis n’importe quelle vue (collection, deck, main, etc.)
+
+
+
+
+Plan d’action étape par étape FEATURE/BOOSTERS-TIMER-PERSISTANCE
+1. Analyse et adaptation de l’architecture
+Identifier où intégrer la logique "booster" :
+Créer un service dédié (ex : boosterService.js) pour la gestion des boosters, du timer et de la persistance.
+Prévoir une interaction avec la collection (ajout des cartes tirées) et le système de notification.
+Définir les points d’entrée UI :
+Ajouter/modifier un bouton "Ouvrir un booster" dans l’interface principale.
+Prévoir une modal ou un composant pour l’animation d’ouverture.
+2. Création du service de boosters
+Créer boosterService.js :
+Méthode pour tirer un booster (5 cartes aléatoires, via l’API ou local).
+Gestion du timer/cooldown (stockage du timestamp du dernier tirage, calcul du temps restant).
+Persistance du timer et de l’état dans le localStorage (ou via ton storageService).
+Méthode pour vérifier si le joueur peut ouvrir un booster.
+Méthode pour ajouter les cartes tirées à la collection (via cardService ou équivalent).
+3. Animation et expérience utilisateur
+Créer une modal d’ouverture de booster :
+Animation d’apparition des cartes une par une (avec un minimum d’effets, sons si tu veux).
+Affichage des cartes tirées avant validation/fermeture.
+Intégration avec le système de notification pour feedback utilisateur.
+Adapter le bouton d’ouverture :
+Désactiver le bouton pendant le cooldown, afficher le temps restant (format mm:ss).
+Afficher un message clair si le joueur doit attendre.
+4. Intégration à la collection
+Ajouter les cartes tirées à la collection :
+Utiliser la logique existante pour ajouter des cartes à la collection (éviter les doublons, gérer les quantités).
+Mettre à jour l’UI de la collection après chaque ouverture de booster.
+5. Persistance et synchronisation
+Sauvegarder/restaurer l’état du booster et du timer :
+S’assurer que le timer/cooldown est persistant même après refresh.
+Synchroniser l’état du booster avec le reste du jeu (callback unifié ou équivalent).
+6. Refactoring et cohérence
+Vérifier la cohérence avec tes services existants :
+Utiliser les services déjà présents (storageService, notificationService, etc.) pour éviter la redondance.
+Adapter la structure des données pour rester compatible avec ton système de collection et de pioche.
+Documenter chaque choix d’implémentation :
+Ajouter des commentaires pour expliquer pourquoi chaque adaptation a été faite.
+7. Tests et UX
+Tester tous les cas d’usage :
+Ouverture d’un booster, timer actif/inactif, refresh de la page, ajout à la collection, feedback utilisateur.
+Ajuster l’UX :
+S’assurer que l’expérience est fluide, intuitive et cohérente avec le reste de ton application.
