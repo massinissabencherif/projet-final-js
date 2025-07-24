@@ -10,6 +10,32 @@ import { commentService } from './services/commentService.js';
 import { boosterService } from './services/boosterService.js';
 import { cardService } from './services/cardService.js';
 
+// Préchargement de l'image de background pour un affichage immédiat
+const preloadBackground = () => {
+    const img = new Image();
+    img.src = 'src/assets/background.png';
+    
+    // Forcer l'affichage du background immédiatement avec le gradient de fallback
+    document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    
+    img.onload = () => {
+        // Une fois l'image chargée, l'appliquer comme background
+        document.body.style.backgroundImage = `url('src/assets/background.png')`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center center';
+        document.body.style.backgroundAttachment = 'fixed';
+        document.body.style.backgroundRepeat = 'no-repeat';
+    };
+    
+    img.onerror = () => {
+        // En cas d'erreur, garder le gradient de fallback
+        console.warn('⚠️ Impossible de charger l\'image de background, utilisation du gradient de fallback');
+    };
+};
+
+// Précharger le background immédiatement
+preloadBackground();
+
 // Suppression de logCollection
 
 // Exposer les contrôleurs et services globalement pour l'accès cross-controller
@@ -18,6 +44,8 @@ window.battleController = battleController;
 window.battleService = battleService;
 window.gameStateService = gameStateService;
 window.cardService = cardService;
+window.renderCollectionUI = renderCollectionUI;
+window.commentService = commentService;
 
 // Initialisation de l'application
 async function initApp() {
@@ -85,6 +113,15 @@ function restoreBattleState() {
                 gameArea.style.display = 'none';
                 battleSection.style.display = 'flex';
                 
+                // Masquer la collection et désactiver le booster en mode combat
+                const collectionSection = document.getElementById('collection-section');
+                if (collectionSection) collectionSection.style.display = 'none';
+                const boosterBtn = document.getElementById('booster-button');
+                if (boosterBtn) {
+                    boosterBtn.disabled = true;
+                    boosterBtn.style.opacity = '0.5';
+                }
+                
                 // Réinitialiser l'affichage du combat
                 battleController.initBattle().then(() => {
                 }).catch(error => {
@@ -101,6 +138,15 @@ function restoreBattleState() {
             if (battleSection && gameArea) {
                 battleSection.style.display = 'none';
                 gameArea.style.display = 'grid';
+                
+                // Réafficher la collection et réactiver le booster en mode normal
+                const collectionSection = document.getElementById('collection-section');
+                if (collectionSection) collectionSection.style.display = '';
+                const boosterBtn = document.getElementById('booster-button');
+                if (boosterBtn) {
+                    boosterBtn.disabled = false;
+                    boosterBtn.style.opacity = '1';
+                }
             }
         }
         
@@ -113,6 +159,15 @@ function restoreBattleState() {
         if (battleSection && gameArea) {
             battleSection.style.display = 'none';
             gameArea.style.display = 'grid';
+            
+            // Réafficher la collection et réactiver le booster en cas d'erreur
+            const collectionSection = document.getElementById('collection-section');
+            if (collectionSection) collectionSection.style.display = '';
+            const boosterBtn = document.getElementById('booster-button');
+            if (boosterBtn) {
+                boosterBtn.disabled = false;
+                boosterBtn.style.opacity = '1';
+            }
         }
     }
 }
@@ -258,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
     setupBoosterButton();
     setupClearDeckButton();
+    
     // Appeler renderCollectionUI au chargement initial
     renderCollectionUI();
     // Appeler enableHandAndDeckDragDrop après chaque updateUI
@@ -351,27 +407,6 @@ function renderCollectionUI() {
                 badge.style = 'position:absolute;top:4px;right:8px;background:#ffb703;color:#222;font-weight:bold;padding:2px 7px;border-radius:12px;font-size:13px;box-shadow:0 1px 4px #0002;z-index:2;';
                 cardDiv.appendChild(badge);
             }
-            // Bouton Ajouter au deck
-            const deck = gameStateService.getDeck();
-            const hand = gameStateService.getHand();
-            const inDeck = deck.some(c => c.id === card.id);
-            const totalPlayable = deck.length + hand.length;
-            const deckFull = totalPlayable >= 30;
-            const addBtn = document.createElement('button');
-            addBtn.textContent = inDeck ? 'Déjà dans le deck' : deckFull ? 'Deck plein' : 'Ajouter au deck';
-            addBtn.disabled = inDeck || deckFull;
-            addBtn.style = 'margin-top:6px;padding:4px 8px;font-size:13px;border-radius:6px;border:1px solid #bbb;background:#e0e0e0;cursor:pointer;width:90px;';
-            addBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!inDeck && !deckFull) {
-                    const added = gameStateService.addCardsToDeck([card]);
-                    if (added) {
-                        renderCollectionUI();
-                        if (window.gameController && typeof window.gameController.updateUI === 'function') window.gameController.updateUI();
-                    }
-                }
-            });
-            cardDiv.appendChild(addBtn);
             cardDiv.addEventListener('click', (e) => {
                 e.stopPropagation();
                 cardService.showCardDetails(card);
@@ -387,4 +422,12 @@ function renderCollectionUI() {
 document.addEventListener('cardMoved', () => {
     if (typeof renderCollectionUI === 'function') renderCollectionUI();
     if (window.gameController && typeof window.gameController.updateUI === 'function') window.gameController.updateUI();
+}); 
+
+// Écouter l'événement de rafraîchissement de la collection
+document.addEventListener('refreshCollection', () => {
+    console.log('📡 Événement refreshCollection reçu, rafraîchissement de la collection');
+    if (typeof renderCollectionUI === 'function') {
+        renderCollectionUI();
+    }
 }); 

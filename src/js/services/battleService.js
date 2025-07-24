@@ -158,6 +158,21 @@ class BattleService {
         if (!battleData) {
             battleData = storageService.loadPartialData('battleState', {});
         }
+        
+        // Vérification de sécurité pour éviter les erreurs si battleData est null
+        if (!battleData) {
+            console.log('Aucun état de combat à restaurer, initialisation avec des valeurs par défaut');
+            this.opponentHand = [];
+            this.opponentDeck = [];
+            this.opponentDiscard = [];
+            this.opponentBattleCard = null;
+            this.battlePlayerCard = null;
+            this.selectedBattleCard = null;
+            this.inBattle = false;
+            this.battleStateLoaded = true;
+            return;
+        }
+        
         this.opponentHand = battleData.opponentHand || [];
         this.opponentDeck = battleData.opponentDeck || [];
         this.opponentDiscard = battleData.opponentDiscard || [];

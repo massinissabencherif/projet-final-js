@@ -60,8 +60,17 @@ class BattleController {
         const hand = gameStateService.getHand();
         
         if (deck.length === 0 && hand.length === 0) {
-            console.warn('Vous devez d\'abord tirer des cartes avant de lancer un combat !');
+            alert('Vous devez d\'abord ajouter des cartes à votre deck ou à votre main avant de lancer un combat !');
             return;
+        }
+        
+        // Masquer la collection et désactiver le booster
+        const collectionSection = document.getElementById('collection-section');
+        if (collectionSection) collectionSection.style.display = 'none';
+        const boosterBtn = document.getElementById('booster-button');
+        if (boosterBtn) {
+            boosterBtn.disabled = true;
+            boosterBtn.style.opacity = '0.5';
         }
         
         // Sauvegarder l'état avant le combat
@@ -87,6 +96,15 @@ class BattleController {
         // Marquer que nous sommes en mode combat
         battleService.inBattle = true;
         
+        // Masquer la collection et désactiver le booster
+        const collectionSection = document.getElementById('collection-section');
+        if (collectionSection) collectionSection.style.display = 'none';
+        const boosterBtn = document.getElementById('booster-button');
+        if (boosterBtn) {
+            boosterBtn.disabled = true;
+            boosterBtn.style.opacity = '0.5';
+        }
+        
         // Initialiser la main de l'IA pour un nouveau combat
         await battleService.initOpponentHand(); // 5 cartes directes dans la main, deck vide
         
@@ -99,8 +117,8 @@ class BattleController {
         // Mettre à jour les scores (ils devraient être à 0 pour un nouveau combat)
         this.updateBattleScores();
         
-        // Afficher la section de commentaires
-        this.showBattleCommentsSection();
+        // Afficher la section de commentaires immédiatement avec les commentaires existants
+        this.showBattleCommentsSection(true);
         
         // Afficher le bouton "Finir le combat"
         this.showFinishBattleButton();
@@ -172,12 +190,16 @@ class BattleController {
             });
         }
         
-        // Afficher la défausse du joueur
+        // Afficher la défausse du joueur (NON-INTERACTIVE)
         const battleDiscardContainer = document.getElementById('battle-discard-container');
         if (battleDiscardContainer) {
             battleDiscardContainer.innerHTML = '';
             discard.forEach((card, index) => {
                 const discardCardElement = cardService.createBattleCardElement(card, 'battle-discard', index);
+                // Rendre la carte non-interactive
+                discardCardElement.style.pointerEvents = 'none';
+                discardCardElement.style.opacity = '0.7';
+                discardCardElement.draggable = false;
                 discardCardElement.addEventListener('click', () => this.handleDiscardCardClick(card));
                 battleDiscardContainer.appendChild(discardCardElement);
             });
@@ -215,13 +237,17 @@ class BattleController {
             }
         }
 
-        // Afficher la défausse de l'IA
+        // Afficher la défausse de l'IA (NON-INTERACTIVE)
         const opponentDiscardContainer = document.getElementById('battle-opponent-discard-container');
         if (opponentDiscardContainer) {
             opponentDiscardContainer.innerHTML = '';
             const opponentDiscard = battleService.getOpponentDiscard();
             opponentDiscard.forEach((card, index) => {
                 const discardCardElement = cardService.createBattleCardElement(card, 'battle-opponent-discard', index);
+                // Rendre la carte non-interactive
+                discardCardElement.style.pointerEvents = 'none';
+                discardCardElement.style.opacity = '0.7';
+                discardCardElement.draggable = false;
                 opponentDiscardContainer.appendChild(discardCardElement);
             });
         }
@@ -346,8 +372,55 @@ class BattleController {
         gameStateService.updateBattleScores(result.result);
         this.updateBattleScores();
         
+        // Ajouter un commentaire automatique de l'IA
+        this.addAIComment(result.result);
+        
         // Afficher la zone de commentaires
         this.showBattleCommentsSection(true);
+        
+        // Fin automatique si 10 victoires atteintes
+        const stats = gameStateService.getGameStats();
+        if (stats.wins >= 10 || stats.losses >= 10) {
+            setTimeout(() => this.exitBattle(), 600); // Laisse le temps d'afficher le résultat
+        }
+    }
+    
+    // Ajouter un commentaire automatique de l'IA
+    addAIComment(result) {
+        const aiMessages = {
+            'victoire': [
+                "Bien joué ! Tu m'as eu cette fois-ci !",
+                "Impressionnant ! Tu as vraiment bien joué !",
+                "Bravo ! Tu mérites cette victoire !",
+                "Excellent combat ! Tu as été plus fort que moi !",
+                "Chapeau ! Tu m'as battu fair and square !",
+                "Belle performance ! Tu as gagné honnêtement !"
+            ],
+            'défaite': [
+                "Haha ! Je t'ai bien eu cette fois !",
+                "Pas de chance ! J'étais plus fort aujourd'hui !",
+                "Victoire ! Tu devras faire mieux la prochaine fois !",
+                "Boom ! Je t'ai battu !",
+                "Pas mal, mais pas assez pour me battre !",
+                "Game over ! J'ai gagné cette manche !"
+            ],
+            'égalité': [
+                "Égalité ! On est à égalité !",
+                "Match nul ! On se reverra !",
+                "Personne ne gagne ! C'est un match nul !",
+                "Égalité parfaite ! On est aussi forts !",
+                "Match nul ! La prochaine fois on verra !",
+                "Égalité ! On se départagera une autre fois !"
+            ]
+        };
+        
+        const messages = aiMessages[result] || aiMessages['égalité'];
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        
+        // Ajouter le commentaire de l'IA
+        if (window.commentService) {
+            window.commentService.saveComment(`🤖 IA: ${randomMessage}`);
+        }
     }
 
     // Défausse automatique des cartes de combat
@@ -388,8 +461,7 @@ class BattleController {
         
         controls.innerHTML = `
             <div class="battle-result-message" aria-live="polite" tabindex="0">${message}</div>
-            <button id="battle-replay-btn" class="battle-button">Rejouer</button>
-            <button id="battle-exit-btn" class="battle-button">Retour</button>
+            <button id="battle-exit-btn" class="battle-button">Retour à la page tirage</button>
         `;
 
         // Appliquer les animations
@@ -403,19 +475,12 @@ class BattleController {
         // Rafraîchir uniquement les zones de cartes sans toucher au message de résultat
         this.refreshBattleZones();
 
-        // Gestionnaires pour les boutons
-        document.getElementById('battle-replay-btn').onclick = () => this.replayBattle();
+        // Gestionnaire pour le bouton
         document.getElementById('battle-exit-btn').onclick = () => this.exitBattle();
     }
 
-    // Rejouer un combat
-    replayBattle() {
-        battleService.resetBattleZones();
-        this.displayBattleCards();
-        const controls = document.getElementById('battle-controls');
-        controls.innerHTML = '';
-        this.hideBattleCommentsSection();
-    }
+
+
 
     // Sortir du mode combat
     exitBattle() {
@@ -440,6 +505,11 @@ class BattleController {
         
         // Afficher la modal de résultat
         this.showBattleResultModal(result, message, stats);
+        
+        // S'assurer que la collection est rafraîchie après la fin du combat
+        setTimeout(() => {
+            if (typeof renderCollectionUI === 'function') renderCollectionUI();
+        }, 100);
     }
 
     // Afficher la modal de résultat de combat
@@ -488,8 +558,45 @@ class BattleController {
 
     // Terminer le combat et réinitialiser
     finishBattleAndReset() {
-        // Vider le deck et la main du joueur
+        console.log('🔍 Début de finishBattleAndReset');
+        
+        // Remettre toutes les cartes du joueur (main, deck, défausse) dans la collection
+        const allCards = [
+            ...gameStateService.getDeck(),
+            ...gameStateService.getHand(),
+            ...gameStateService.getDiscard()
+        ];
+        
+        console.log('📊 Cartes à remettre dans la collection:', allCards.length, allCards.map(c => c.name));
+        
+        // Vider d'abord le deck, la main et la défausse pour que le statut soit correct
         gameStateService.resetDeckAndHand();
+        gameStateService.setDiscard([]);
+        
+        console.log('🗑️ Deck et main vidés');
+        
+        // Ensuite ajouter les cartes à la collection
+        if (allCards.length > 0) {
+            const cardService = window.cardService;
+            if (cardService) {
+                console.log('📚 Collection avant ajout:', cardService.collection.length);
+                
+                for (const card of allCards) {
+                    cardService.collection.push(card);
+                }
+                
+                console.log('📚 Collection après ajout:', cardService.collection.length);
+                cardService.saveCollection();
+                
+                // Forcer le rechargement de la collection
+                cardService.collection = cardService.loadCollection();
+                console.log('📚 Collection après rechargement:', cardService.collection.length);
+            } else {
+                console.error('❌ cardService non trouvé');
+            }
+        } else {
+            console.log('⚠️ Aucune carte à remettre dans la collection');
+        }
         
         // Réinitialiser les scores de combat
         gameStateService.resetStats();
@@ -497,16 +604,41 @@ class BattleController {
         // Réinitialiser l'état du combat
         battleService.resetBattleState();
         
+        // Vider tous les commentaires à la fin du combat
+        if (window.commentService) {
+            window.commentService.clearAllComments();
+            console.log('🗑️ Commentaires vidés');
+        }
+        
         // Masquer la section de combat
         this.hideBattleSection();
+        
+        console.log('🎭 Section de combat masquée');
         
         // Mettre à jour l'interface
         if (window.gameController && typeof window.gameController.updateUI === 'function') {
             window.gameController.updateUI();
+            console.log('🎮 Interface mise à jour');
         }
         
-        // Notification de confirmation
-        console.log('Combat terminé ! Vous pouvez maintenant lancer un nouveau combat.');
+        // Rafraîchir la collection immédiatement après avoir mis à jour cardService
+        setTimeout(() => {
+            console.log('🔄 Tentative de rafraîchissement de la collection');
+            if (typeof window.renderCollectionUI === 'function') {
+                console.log('✅ renderCollectionUI trouvé via window, appel en cours...');
+                window.renderCollectionUI();
+                console.log('✅ renderCollectionUI appelé');
+            } else if (typeof renderCollectionUI === 'function') {
+                console.log('✅ renderCollectionUI trouvé, appel en cours...');
+                renderCollectionUI();
+                console.log('✅ renderCollectionUI appelé');
+            } else {
+                console.error('❌ renderCollectionUI non trouvé');
+                // Déclencher un événement pour forcer le rafraîchissement
+                window.dispatchEvent(new CustomEvent('refreshCollection'));
+                console.log('📡 Événement refreshCollection déclenché');
+            }
+        }, 100);
     }
 
     // Masquer la section de combat
@@ -515,6 +647,15 @@ class BattleController {
         document.querySelector('.game-area').style.display = 'grid';
         this.hideBattleCommentsSection();
         this.hideFinishBattleButton();
+        
+        // Réafficher la collection et réactiver le booster
+        const collectionSection = document.getElementById('collection-section');
+        if (collectionSection) collectionSection.style.display = '';
+        const boosterBtn = document.getElementById('booster-button');
+        if (boosterBtn) {
+            boosterBtn.disabled = false;
+            boosterBtn.style.opacity = '1';
+        }
         
         // Émettre un événement pour notifier l'application principale
         window.dispatchEvent(new CustomEvent('battleSectionHidden'));
@@ -757,10 +898,14 @@ class BattleController {
         if (battleHandContainer) {
             cardService.displayCardsInContainer(battleHandContainer, hand, 'battle-hand', { isBattleMode: true });
         }
-        // Défausse
+        // DÉFAUSSE (désactive toute interaction)
         const battleDiscardContainer = document.getElementById('battle-discard-container');
         if (battleDiscardContainer) {
             cardService.displayCardsInContainer(battleDiscardContainer, discard, 'battle-discard', { isBattleMode: true });
+            Array.from(battleDiscardContainer.children).forEach(cardDiv => {
+                cardDiv.style.pointerEvents = 'none';
+                cardDiv.style.opacity = '0.7';
+            });
         }
         // Zone de combat joueur
         const battlePlayerCombat = document.getElementById('battle-player-combat');
@@ -796,6 +941,15 @@ class BattleController {
                 isBattleMode: true,
                 showSelection: true,
                 selectedIndex: opponentHand.findIndex(card => card.id === opponentBattleCard?.id)
+            });
+        }
+        // DÉFAUSSE IA (désactive toute interaction)
+        const opponentDiscardContainer = document.getElementById('battle-opponent-discard-container');
+        if (opponentDiscardContainer) {
+            cardService.displayCardsInContainer(opponentDiscardContainer, battleService.getOpponentDiscard(), 'battle-opponent-discard', { isBattleMode: true });
+            Array.from(opponentDiscardContainer.children).forEach(cardDiv => {
+                cardDiv.style.pointerEvents = 'none';
+                cardDiv.style.opacity = '0.7';
             });
         }
     }

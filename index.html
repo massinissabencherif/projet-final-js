@@ -5,15 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokémon TCG - Combattez pour devenir champions !</title>
     <link rel="stylesheet" href="src/css/styles.css">
+    <!-- Préchargement du background pour un affichage immédiat -->
+    <link rel="preload" href="src/assets/background.png" as="image" type="image/png">
 </head>
 <body>
     <header>
         <h1>Pokémon TCG</h1>
         <div class="main-actions" style="display:flex;gap:16px;justify-content:center;margin:20px 0;">
             <button id="booster-button" class="main-btn">Ouvrir un booster (5 cartes)</button>
-            <!-- Les autres boutons principaux sont ici, par exemple : -->
-            <button id="draw-button" class="main-btn">Tirer 5 cartes</button>
-            <button id="battle-button" class="main-btn">Lancer un combat</button>
         </div>
         <div class="player-info">
             <span>Joueur: <span id="player-name">Dresseur</span></span>
